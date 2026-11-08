@@ -60,8 +60,11 @@ export default function JobsPage() {
     const res = await fetch(`${API_URL}/api/v1/jobs?${params}`, { credentials: "include" });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
-    // Email outreach only — never show API/POST-apply listings.
+    // Email outreach only — never show API/POST-apply or already-sent items.
+    const hiddenStatus = new Set(["applied", "sent", "rejected", "closed"]);
     const items: Job[] = (data.items || []).filter((j: Job) => {
+      if (j.source === "cold_website") return false;
+      if (hiddenStatus.has(String(j.status || "").toLowerCase())) return false;
       if (j.application_mode === "api_apply") return false;
       if (j.application_mode === "email" && j.apply_email) {
         const status = j.match_details?.application?.email_status;

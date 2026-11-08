@@ -72,27 +72,26 @@ def discover_leads(
 
 @router.get("")
 def list_leads(db: Session = Depends(get_db), user_id: UUID = Depends(get_current_user_id)) -> dict:
-    sent_job_ids = (
-        db.query(Application.job_id)
+    sent_ids = {
+        row[0]
+        for row in db.query(Application.job_id)
         .filter(
             Application.user_id == user_id,
             Application.is_deleted.is_(False),
             Application.stage.in_(SENT_APPLICATION_STAGES),
         )
-        .subquery()
-    )
-    jobs = (
-        db.query(Job)
-        .filter(
-            Job.user_id == user_id,
-            Job.is_deleted.is_(False),
-            Job.source == "cold_website",
-            ~Job.id.in_(sent_job_ids),
-        )
-        .order_by(Job.discovered_at.desc())
-        .limit(100)
         .all()
+        if row[0] is not None
+    }
+    q = db.query(Job).filter(
+        Job.user_id == user_id,
+        Job.is_deleted.is_(False),
+        Job.source == "cold_website",
+        Job.status.notin_(["applied", "sent", "rejected", "closed"]),
     )
+    if sent_ids:
+        q = q.filter(~Job.id.in_(list(sent_ids)))
+    jobs = q.order_by(Job.discovered_at.desc()).limit(100).all()
     company_ids = [j.company_id for j in jobs if j.company_id]
     companies = {
         c.id: c.name for c in db.query(Company).filter(Company.id.in_(company_ids)).all()

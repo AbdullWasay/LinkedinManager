@@ -17,16 +17,21 @@ SENT_APPLICATION_STAGES = ("sent", "replied", "interview", "offer")
 
 def _exclude_sent_job_ids(db: Session, user_id: UUID, query):
     """Hide opportunities that already had outreach emailed — those live under Applied."""
-    sent_job_ids = (
-        db.query(Application.job_id)
+    sent_ids = [
+        row[0]
+        for row in db.query(Application.job_id)
         .filter(
             Application.user_id == user_id,
             Application.is_deleted.is_(False),
             Application.stage.in_(SENT_APPLICATION_STAGES),
         )
-        .subquery()
-    )
-    return query.filter(~Job.id.in_(sent_job_ids))
+        .all()
+        if row[0] is not None
+    ]
+    query = query.filter(Job.status.notin_(["applied", "sent", "rejected", "closed"]))
+    if sent_ids:
+        query = query.filter(~Job.id.in_(sent_ids))
+    return query
 
 
 def _merge_apply_meta(job: Job, apply_meta: dict) -> None:

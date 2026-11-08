@@ -27,7 +27,9 @@ export default function ColdOutreachPage() {
     const res = await fetch(`${API_URL}/api/v1/cold-leads`, { credentials: "include" });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
-    setItems(data.items || []);
+    // Sent leads belong under Applied only.
+    const hidden = new Set(["applied", "sent", "rejected", "closed"]);
+    setItems((data.items || []).filter((item: Lead) => !hidden.has(String(item.status || "").toLowerCase())));
   }
 
   useEffect(() => {
