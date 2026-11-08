@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "fastapi",
+  "installCommand": "pip install -r requirements.txt",
+  "buildCommand": "alembic upgrade head",
+  "functions": {
+    "app/main.py": {
+      "maxDuration": 60
+    }
+  }
+}
