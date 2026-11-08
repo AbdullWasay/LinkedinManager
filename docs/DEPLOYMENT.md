@@ -1,51 +1,34 @@
-# Deployment (full stack on Vercel + Neon)
-
-Gemelli/Kingswell-style outcome: **frontend + backend both live**, one login URL.
+# Deployment + free automation
 
 | Piece | Host | Notes |
 |-------|------|--------|
-| UI | Vercel project `mylinkedinmanager` | Root Directory `apps/web` |
-| API | Vercel project `linkedinmanager-api` | Root Directory `apps/api` (FastAPI) |
-| Postgres | Neon project `linkedin-manager` | `DATABASE_URL` on the API project |
-| Redis / Celery | optional later (Render workers) | Login & CRUD work without Redis |
+| UI | Vercel `mylinkedinmanager` | Root `apps/web` |
+| API | Vercel `linkedinmanager-api` | Root `apps/api` |
+| Postgres | Neon `linkedin-manager` | Shared by API + automation |
+| Scheduled jobs | **GitHub Actions** (free) | No Render / Redis / Celery required |
 
-Scheduled Celery jobs (outreach beat, sheets sync) need a separate worker host later. Auth, jobs UI, and API routes work on Vercel Functions.
+## Automation (laptop can be off)
 
-## Projects
+`.github/workflows/automation.yml` runs:
 
-### 1) API — `linkedinmanager-api`
+- Discovery + draft: 06:00 / 12:00 / 16:00 / 21:00 UTC
+- Send approved emails: hourly at :15 UTC
+- Sheets + Gmail sync: every 30 minutes
 
-- Framework: **FastAPI**
-- Root Directory: `apps/api`
-- Build: `alembic upgrade head` (migrations)
-- Required env: `DATABASE_URL`, `AUTH_PASSWORD`, `SECRET_KEY`, `FRONTEND_URL`, `CORS_ORIGINS`, `TOKEN_ENCRYPTION_KEY`, Google/AI keys as needed
+Manual run: GitHub → Actions → **Automation** → Run workflow.
 
-Public URL: `https://linkedinmanager-api.vercel.app` (confirm after deploy).
+### Required GitHub Secrets
 
-### 2) UI — `mylinkedinmanager`
+Repo → Settings → Secrets and variables → Actions:
 
-- Framework: **Next.js**
-- Root Directory: `apps/web`
-- Env:
+`DATABASE_URL`, `SECRET_KEY`, `TOKEN_ENCRYPTION_KEY`, `AUTH_PASSWORD`, `ALLOWED_LOGIN_EMAILS`, `FRONTEND_URL`, `CORS_ORIGINS`, `DEFAULT_USER_EMAIL`, `DEFAULT_USER_NAME`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `GOOGLE_SHEETS_TITLE`, `GROQ_API_KEY`, `GROQ_MODEL`, `GEMINI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, `GEMINI_MODEL`
 
-| Name | Value |
-|------|--------|
-| `API_PROXY_TARGET` | `https://linkedinmanager-api.vercel.app` |
-| `NEXT_PUBLIC_API_URL` | leave empty |
-| `FRONTEND_URL` | `https://mylinkedinmanager.vercel.app` |
+Use the same Neon `DATABASE_URL` as the Vercel API (`postgresql+psycopg://…`).
 
-## Google OAuth (optional)
+### App settings
 
-- JS origins: `https://mylinkedinmanager.vercel.app`
-- Redirect: `https://linkedinmanager-api.vercel.app/api/v1/auth/google/callback`
+In the dashboard Settings: enable **auto_send**, leave automation **unpaused**, connect Google/Gmail once.
 
-## Local
+## Optional HTTP cron
 
-```bash
-# API
-cd apps/api && source .venv/bin/activate
-uvicorn app.main:app --reload --port 8000
-
-# Web
-cd apps/web && npm run dev
-```
+`POST /api/v1/cron/{discovery|send|sheets-sync|gmail-reconcile}` with header `X-Cron-Secret: <CRON_SECRET>`.

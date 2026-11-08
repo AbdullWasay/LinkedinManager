@@ -11,6 +11,7 @@ from app.api import (
     auth,
     blocklist,
     cold_leads,
+    cron,
     emails,
     health,
     jobs,
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router, prefix="/api/v1")
+    app.include_router(cron.router, prefix="/api/v1")
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(profile.router, prefix="/api/v1")
     app.include_router(resumes.router, prefix="/api/v1")

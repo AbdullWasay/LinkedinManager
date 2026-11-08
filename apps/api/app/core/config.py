@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     allowed_login_emails: str = ""
     auth_disabled: bool = False
     session_max_age_hours: int = 168  # 7 days
+    # Protects /api/v1/cron/* when using HTTP triggers (optional if using GHA in-process)
+    cron_secret: str = ""
 
     token_encryption_key: str = ""
 

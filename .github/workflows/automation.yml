@@ -1,0 +1,92 @@
+# Free always-on automation (no Render / Redis / Celery).
+# Runs on GitHub Actions schedules while the laptop is off.
+name: Automation
+
+on:
+  schedule:
+    # Discover + draft 4x/day (UTC)
+    - cron: "0 6 * * *"
+    - cron: "0 12 * * *"
+    - cron: "0 16 * * *"
+    - cron: "0 21 * * *"
+    # Send approved drafts hourly at :15
+    - cron: "15 * * * *"
+    # Sheets + Gmail sync
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Job to run"
+        required: true
+        type: choice
+        options:
+          - discovery
+          - send
+          - sheets-sync
+          - gmail-reconcile
+          - all
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Resolve jobs
+        id: jobs
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            JOB="${{ inputs.job }}"
+          else
+            case "${{ github.event.schedule }}" in
+              "15 * * * *") JOB="send" ;;
+              "*/30 * * * *") JOB="sheets-sync gmail-reconcile" ;;
+              *) JOB="discovery" ;;
+            esac
+          fi
+          if [ "$JOB" = "all" ]; then
+            JOB="discovery send sheets-sync gmail-reconcile"
+          fi
+          echo "list=$JOB" >> "$GITHUB_OUTPUT"
+
+      - name: Run scheduled jobs
+        env:
+          APP_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
+          AUTH_PASSWORD: ${{ secrets.AUTH_PASSWORD }}
+          ALLOWED_LOGIN_EMAILS: ${{ secrets.ALLOWED_LOGIN_EMAILS }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
+          DEFAULT_USER_EMAIL: ${{ secrets.DEFAULT_USER_EMAIL }}
+          DEFAULT_USER_NAME: ${{ secrets.DEFAULT_USER_NAME }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
+          GOOGLE_SHEETS_TITLE: ${{ secrets.GOOGLE_SHEETS_TITLE }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ secrets.GROQ_MODEL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          set -e
+          for job in ${{ steps.jobs.outputs.list }}; do
+            echo "::group::Running $job"
+            python -m scripts.run_scheduled "$job"
+            echo "::endgroup::"
+          done
