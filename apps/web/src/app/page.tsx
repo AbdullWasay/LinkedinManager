@@ -117,23 +117,8 @@ export default function DashboardPage() {
         <NextSendTimer initial={nextSend} />
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        <AnalyticsChart
-          title="Emails sent"
-          series={series}
-          metric="emails_sent"
-          range={range}
-          onRangeChange={setRange}
-          color="#0f766e"
-        />
-        <AnalyticsChart
-          title="Jobs found"
-          series={series}
-          metric="jobs_found"
-          range={range}
-          onRangeChange={setRange}
-          color="#0e7490"
-        />
+      <section>
+        <AnalyticsChart series={series} range={range} onRangeChange={setRange} />
       </section>
 
       <section className="surface rounded-2xl p-5">
