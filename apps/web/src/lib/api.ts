@@ -195,7 +195,8 @@ export const api = {
     }),
   logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   disconnectGoogle: () => request<{ ok: boolean }>("/auth/google/disconnect", { method: "POST" }),
-  googleLoginUrl: `${(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "")}/api/v1/auth/google/login`,
+  // Empty NEXT_PUBLIC_API_URL = same-origin /api rewrite on Vercel (never fall back to localhost).
+  googleLoginUrl: `${(process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")}/api/v1/auth/google/login`,
   syncStatus: () => request<SyncStatus>("/sync/status"),
   pushSheets: () => request<Record<string, unknown>>("/sync/sheets/push", { method: "POST" }),
   pullSheets: () => request<Record<string, unknown>>("/sync/sheets/pull", { method: "POST" }),

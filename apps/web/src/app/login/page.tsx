@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
 // Google OAuth must hit the backend host directly (redirect URI is registered there).
-const GOOGLE_API_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:8000";
+const GOOGLE_API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
 
 export default function LoginPage() {
   const router = useRouter();
