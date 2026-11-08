@@ -12,7 +12,7 @@ from app.api.deps import get_current_user_id
 from app.db.models import Company, Job
 from app.db.seed import ensure_default_user
 from app.db.session import get_db
-from app.integrations.job_sources.cold_website import lead_to_discovered
+from app.integrations.job_sources.cold_website import ColdWebsiteAdapter, lead_to_discovered
 from app.services.cold_lead_validation import (
     email_is_personal,
     validate_cold_website_lead,
@@ -34,6 +34,58 @@ class ColdLeadIn(BaseModel):
     notes: Optional[str] = None
     confirm_no_website: bool = False
     create_draft: bool = True
+
+
+@router.post("/discover")
+def discover_leads(
+    db: Session = Depends(get_db),
+    user_id: UUID = Depends(get_current_user_id),
+) -> dict:
+    """Auto-find UK/US businesses with public emails and no proper website, then queue drafts."""
+    user = ensure_default_user(db)
+    if user.id != user_id:
+        raise HTTPException(status_code=403, detail="User mismatch")
+    if user.profile is None:
+        raise HTTPException(status_code=400, detail="Profile missing")
+
+    profile = _profile_dict(user.profile)
+
+    fetched = ColdWebsiteAdapter().fetch()
+    saved = 0
+    drafts = 0
+    errors: list[str] = []
+    for discovered in fetched:
+        try:
+            discovered.raw_payload = {
+                **(discovered.raw_payload or {}),
+                "posted_at": datetime.now(timezone.utc).isoformat(),
+                "confirmed_no_website": True,
+            }
+            job = ingest_discovered_job(db, user_id, profile, discovered, min_score=40.0)
+            if job is None:
+                continue
+            saved += 1
+            try:
+                # Cold website offers are queued for send (same as previous manual flow).
+                draft = create_draft_for_job(db, user, user.profile, job, auto_approve=True)
+                if draft:
+                    drafts += 1
+            except Exception as exc:
+                errors.append(f"{job.title}: draft failed — {exc}")
+        except Exception as exc:
+            errors.append(str(exc))
+    db.commit()
+    return {
+        "fetched": len(fetched),
+        "saved": saved,
+        "drafts_created": drafts,
+        "auto_approved": True,
+        "errors": errors[:10],
+        "message": (
+            f"Found {len(fetched)} candidates, saved {saved}, queued {drafts} emails. "
+            "They join the automatic send queue when auto-send is on."
+        ),
+    }
 
 
 @router.get("")
