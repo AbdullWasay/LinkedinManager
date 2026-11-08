@@ -1,0 +1,372 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+
+type Job = {
+  id: string;
+  title: string;
+  company_name?: string | null;
+  source: string;
+  source_url?: string | null;
+  location?: string | null;
+  employment_type?: string | null;
+  is_remote: boolean;
+  salary_range?: string | null;
+  status: string;
+  match_score?: number | null;
+  application_mode?: string;
+  apply_url?: string | null;
+  apply_email?: string | null;
+  manual_apply_required?: boolean;
+  manual_apply_status?: string;
+  posted_at?: string | null;
+  match_details?: {
+    relevant_strengths?: string[];
+    potential_concerns?: string[];
+    recommended_action?: string;
+    freshness?: string;
+    application?: {
+      detection_reason?: string;
+      email_status?: string;
+      apply_method?: string;
+      api_endpoint?: string;
+    };
+  };
+};
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+type ModeFilter = "email" | "api" | "all";
+type ScoreFilter = "any" | "70" | "55";
+
+export default function JobsPage() {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [total, setTotal] = useState(0);
+  const [mode, setMode] = useState<ModeFilter>("email");
+  const [minScore, setMinScore] = useState<ScoreFilter>("any");
+  const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load(opts?: { mode?: ModeFilter; minScore?: ScoreFilter }) {
+    const nextMode = opts?.mode ?? mode;
+    const nextScore = opts?.minScore ?? minScore;
+    const params = new URLSearchParams({ remote_only: "true", limit: "100" });
+    if (nextMode === "email") {
+      params.set("application_mode", "email");
+    } else if (nextMode === "api") {
+      params.set("application_mode", "api_apply");
+    }
+    if (nextScore !== "any") params.set("min_score", nextScore);
+
+    const res = await fetch(`${API_URL}/api/v1/jobs?${params}`);
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    // Only show authentic contact-path roles (verified email or API apply)
+    let items: Job[] = (data.items || []).filter((j: Job) => {
+      if (j.application_mode === "api_apply") return true;
+      if (j.application_mode === "email" && j.apply_email) {
+        const status = j.match_details?.application?.email_status;
+        return status !== "guessed";
+      }
+      return false;
+    });
+    if (nextMode === "all") {
+      // already filtered to authentic
+    }
+    setJobs(items);
+    setTotal(items.length);
+  }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const nextMode = (params.get("mode") as ModeFilter) || (params.get("view") as ModeFilter) || "email";
+    const scoreParam = params.get("min_score");
+    const nextScore: ScoreFilter = scoreParam === "70" || scoreParam === "55" ? scoreParam : "any";
+    const safeMode = ["email", "api", "all"].includes(nextMode) ? nextMode : "email";
+    setMode(safeMode);
+    setMinScore(nextScore);
+    load({ mode: safeMode, minScore: nextScore }).catch((err: Error) => setError(err.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function syncUrl(next: { mode: ModeFilter; minScore: ScoreFilter }) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("mode", next.mode);
+    if (next.minScore === "any") url.searchParams.delete("min_score");
+    else url.searchParams.set("min_score", next.minScore);
+    window.history.replaceState({}, "", url.toString());
+  }
+
+  async function applyFilters(next: { mode?: ModeFilter; minScore?: ScoreFilter }) {
+    const payload = {
+      mode: next.mode ?? mode,
+      minScore: next.minScore ?? minScore,
+    };
+    setMode(payload.mode);
+    setMinScore(payload.minScore);
+    syncUrl(payload);
+    setError(null);
+    try {
+      await load(payload);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Load failed");
+    }
+  }
+
+  async function discover() {
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await fetch(`${API_URL}/api/v1/jobs/discover?min_score=55&sync_sheets=true`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      await fetch(`${API_URL}/api/v1/jobs/reclassify-modes`, { method: "POST" }).catch(() => undefined);
+      const purged = await fetch(`${API_URL}/api/v1/jobs/purge-inauthentic`, { method: "POST" })
+        .then((r) => r.json())
+        .catch(() => null);
+      const removed = purged?.removed ?? 0;
+      setMessage(
+        `Discovery done: fetched ${data.fetched}, saved ${data.saved}, updated ${data.updated}` +
+          (removed ? `, removed ${removed} inauthentic` : "") +
+          "."
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Discovery failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setManualStatus(jobId: string, manual_apply_status: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_URL}/api/v1/jobs/${jobId}/manual-apply`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manual_apply_status }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await load();
+      setMessage(`Marked job as ${manual_apply_status}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return jobs;
+    return jobs.filter((job) =>
+      [job.title, job.company_name, job.location, job.apply_email, job.source]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(q))
+    );
+  }, [jobs, query]);
+
+  function modeChip(job: Job) {
+    if (job.source === "cold_website") return <span className="chip chip-info">Cold website offer</span>;
+    if (job.application_mode === "api_apply") return <span className="chip chip-info">API apply (POST)</span>;
+    if (job.application_mode === "email" || !job.manual_apply_required)
+      return <span className="chip chip-teal">Email outreach</span>;
+    return <span className="chip chip-warn">Manual form apply</span>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-[var(--accent)]">Outreach</p>
+          <h2 className="mt-1 text-3xl">Remote job matches</h2>
+          <p className="mt-2 max-w-2xl text-[var(--text-muted)]">
+            Only authentic roles with a real email or API apply path. Form-board scrapes are excluded.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/ready-to-send" className="btn btn-secondary">
+            Ready to send
+          </Link>
+          <button className="btn btn-primary" disabled={busy} onClick={discover}>
+            {busy ? "Working…" : "Discover jobs now"}
+          </button>
+        </div>
+      </header>
+
+      <section className="surface rounded-2xl p-4 space-y-4">
+        <div>
+          <p className="label">Application mode</p>
+          <div className="filter-bar">
+            {(
+              [
+                ["email", "Email outreach"],
+                ["api", "API apply"],
+                ["all", "All authentic"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                className={mode === key ? "btn btn-primary" : "btn btn-secondary"}
+                onClick={() => applyFilters({ mode: key })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="score-filter">
+              Min match score
+            </label>
+            <select
+              id="score-filter"
+              className="select"
+              value={minScore}
+              onChange={(e) => applyFilters({ minScore: e.target.value as ScoreFilter })}
+            >
+              <option value="any">Any score</option>
+              <option value="55">55%+</option>
+              <option value="70">70%+</option>
+            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="job-search">
+              Search
+            </label>
+            <input
+              id="job-search"
+              className="input"
+              placeholder="Title, company, email…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+        </div>
+      </section>
+
+      {message && (
+        <div className="surface rounded-2xl border-[color:#99f6e4] px-4 py-3 text-sm text-[#115e59]">
+          {message}
+        </div>
+      )}
+      {error && (
+        <div className="surface rounded-2xl border-[color:#fecaca] px-4 py-3 text-sm text-[var(--danger)]">
+          {error}
+        </div>
+      )}
+
+      <p className="text-sm text-[var(--text-muted)]">
+        Showing {filtered.length} of {total} jobs
+      </p>
+
+      <div className="space-y-3">
+        {filtered.map((job) => {
+          const sourceLink = job.source_url || job.apply_url;
+          const isApi = job.application_mode === "api_apply";
+          const isEmail = !isApi && (job.application_mode === "email" || !job.manual_apply_required);
+          const apiEndpoint = job.match_details?.application?.api_endpoint || (isApi ? job.apply_url : null);
+
+          return (
+            <article key={job.id} className="surface rounded-2xl p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {modeChip(job)}
+                    {job.match_details?.freshness === "24h" && (
+                      <span className="chip chip-teal">Posted last 24h</span>
+                    )}
+                    {job.match_details?.freshness === "7d" && <span className="chip">Within 7 days</span>}
+                    {isEmail && job.match_details?.application?.email_status === "guessed" && (
+                      <span className="chip chip-warn">Guessed email — not auto-sent</span>
+                    )}
+                  </div>
+                  <h3 className="text-xl text-[#0b3b3a]">{job.title}</h3>
+                  <p className="mt-1 text-[var(--text-muted)]">
+                    {job.company_name || "Unknown company"} · {job.location || "Remote"} · {job.source}
+                  </p>
+                  {sourceLink && (
+                    <p className="mt-2 break-all text-sm">
+                      <span className="text-[var(--text-muted)]">Source: </span>
+                      <a
+                        className="font-semibold text-[var(--accent)] underline"
+                        href={sourceLink}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {sourceLink}
+                      </a>
+                    </p>
+                  )}
+                  {isApi && apiEndpoint && (
+                    <p className="mt-2 break-all text-sm">
+                      <span className="text-[var(--text-muted)]">POST apply: </span>
+                      <code className="rounded bg-[var(--bg-soft)] px-1.5 py-0.5 text-[var(--info)]">
+                        {apiEndpoint}
+                      </code>
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-semibold text-[#0b3b3a]">
+                    {job.match_score != null ? `${job.match_score}%` : "—"}
+                  </div>
+                  <div className="text-sm text-[var(--text-muted)]">match</div>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--text-muted)]">
+                {job.salary_range && <span>Pay: {job.salary_range}</span>}
+                <span>{job.is_remote ? "Remote" : "Not remote"}</span>
+                {job.apply_email && <span>Email: {job.apply_email}</span>}
+              </div>
+
+              {job.match_details?.application?.detection_reason && (
+                <p className="mt-2 text-sm text-[var(--text-muted)]">
+                  Why: {job.match_details.application.detection_reason}
+                </p>
+              )}
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {sourceLink && (
+                  <a className="btn btn-primary" href={sourceLink} target="_blank" rel="noreferrer">
+                    Open listing
+                  </a>
+                )}
+                {(isApi || (!isEmail && job.manual_apply_status === "pending")) && (
+                  <>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={busy}
+                      onClick={() => setManualStatus(job.id, "applied")}
+                    >
+                      I applied
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={busy}
+                      onClick={() => setManualStatus(job.id, "skipped")}
+                    >
+                      Skip
+                    </button>
+                  </>
+                )}
+              </div>
+            </article>
+          );
+        })}
+        {filtered.length === 0 && !error && (
+          <div className="surface rounded-2xl p-5 text-[var(--text-muted)]">No jobs match these filters.</div>
+        )}
+      </div>
+    </div>
+  );
+}
