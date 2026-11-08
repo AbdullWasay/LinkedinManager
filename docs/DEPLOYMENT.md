@@ -9,8 +9,8 @@ Vercel hosts the **Next.js UI**. FastAPI, Celery, Postgres, and Redis cannot run
 ├── apps/
 │   ├── web/          ← Next.js (deploy on Vercel)
 │   └── api/          ← FastAPI + Celery (deploy on Render)
-├── package.json      ← npm workspace root
-├── vercel.json
+├── package.json           ← npm workspace root
+├── apps/web/vercel.json   ← used when Root Directory = apps/web
 ├── render.yaml
 └── docker-compose.yml
 ```
@@ -26,9 +26,10 @@ Vercel hosts the **Next.js UI**. FastAPI, Celery, Postgres, and Redis cannot run
 
 1. Import the same GitHub repo in [Vercel](https://vercel.com).
 2. **Root Directory:** `apps/web` (Project Settings → General → Root Directory).
-   - This is the recommended path. `apps/web/vercel.json` marks the app as Next.js.
-   - If you leave Root Directory empty (repo root), root `vercel.json` builds the `web` workspace instead.
-3. Framework preset: **Next.js** (auto-detected).
+   - Required for a clean deploy. `apps/web/vercel.json` marks the app as Next.js.
+   - Leave **Output Directory** blank (do not override to `.next` or `apps/web/.next`).
+   - If Root Directory is empty, Vercel looks for `.next` at the repo root while `next build` writes it under `apps/web/.next` → `NEXT_OUTPUT_DIR_MISSING`.
+3. Framework preset: **Next.js** (auto-detected). Build/Install can stay at defaults when Root Directory is `apps/web`.
 4. Environment variables:
 
 | Name | Value |

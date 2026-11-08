@@ -12,13 +12,13 @@ PostgreSQL is the source of truth. Gmail sends mail. Google Sheets can sync. Thi
 │   ├── web/     Next.js UI  → deploy on Vercel
 │   └── api/     FastAPI + Celery → deploy on Render/Railway
 ├── package.json
-├── vercel.json
+├── apps/web/vercel.json
 ├── render.yaml
 ├── docker-compose.yml
 └── docs/
 ```
 
-See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for Vercel + Render steps.
+See **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** for Vercel + Render steps. On Vercel set **Root Directory** to `apps/web`.
 
 ## Stack
 
