@@ -1,0 +1,76 @@
+# Deploy FastAPI + Celery on Render (Vercel cannot run long-lived workers).
+# Dashboard (Next.js) stays on Vercel → set API_PROXY_TARGET to this API URL.
+services:
+  - type: web
+    name: linkedin-manager-api
+    runtime: python
+    rootDir: apps/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: linkedin-manager-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: linkedin-manager-redis
+          type: redis
+          property: connectionString
+      - key: AUTH_PASSWORD
+        sync: false
+      - key: ALLOWED_LOGIN_EMAILS
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+  - type: worker
+    name: linkedin-manager-worker
+    runtime: python
+    rootDir: apps/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.workers.celery_app worker --loglevel=info --pool=solo
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: linkedin-manager-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: linkedin-manager-redis
+          type: redis
+          property: connectionString
+
+  - type: worker
+    name: linkedin-manager-beat
+    runtime: python
+    rootDir: apps/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.workers.celery_app beat --loglevel=info
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: linkedin-manager-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: linkedin-manager-redis
+          type: redis
+          property: connectionString
+
+  - type: redis
+    name: linkedin-manager-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  - name: linkedin-manager-db
+    plan: free

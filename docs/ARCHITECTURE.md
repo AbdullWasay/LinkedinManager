@@ -24,21 +24,23 @@ Single-user web application that discovers jobs, researches companies/contacts, 
 
 ```
 /
-├── frontend/                 # Next.js 14 App Router + Tailwind + shadcn/ui
-├── backend/
-│   ├── app/
-│   │   ├── api/              # FastAPI routers
-│   │   ├── core/             # config, security, logging
-│   │   ├── db/               # SQLAlchemy models, session, migrations
-│   │   ├── schemas/          # Pydantic request/response models
-│   │   ├── services/         # Business logic
-│   │   ├── integrations/     # Google, OpenAI, search, Playwright
-│   │   ├── agents/           # Specialized AI agents
-│   │   ├── workers/          # Celery tasks
-│   │   └── main.py
-│   ├── alembic/
-│   ├── tests/
-│   └── requirements.txt
+├── apps/
+│   ├── web/                  # Next.js App Router (Vercel)
+│   └── api/                  # FastAPI + Celery (Render/Railway)
+│       ├── app/
+│       │   ├── api/          # FastAPI routers
+│       │   ├── core/
+│       │   ├── db/
+│       │   ├── schemas/
+│       │   ├── services/
+│       │   ├── integrations/
+│       │   ├── workers/      # Celery tasks
+│       │   └── main.py
+│       ├── alembic/
+│       └── requirements.txt
+├── package.json              # npm workspaces
+├── vercel.json
+├── render.yaml
 ├── docker-compose.yml
 ├── docs/
 ├── .env.example

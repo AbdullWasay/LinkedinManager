@@ -65,7 +65,7 @@ export default function JobsPage() {
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     // Only show authentic contact-path roles (verified email or API apply)
-    let items: Job[] = (data.items || []).filter((j: Job) => {
+    const items: Job[] = (data.items || []).filter((j: Job) => {
       if (j.application_mode === "api_apply") return true;
       if (j.application_mode === "email" && j.apply_email) {
         const status = j.match_details?.application?.email_status;

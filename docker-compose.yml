@@ -27,7 +27,7 @@ services:
 
   api:
     build:
-      context: ./backend
+      context: ./apps/api
       dockerfile: Dockerfile
     command: >
       sh -c "alembic upgrade head &&
@@ -40,7 +40,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app
+      - ./apps/api:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,16 +49,16 @@ services:
 
   worker:
     build:
-      context: ./backend
+      context: ./apps/api
       dockerfile: Dockerfile
-    command: celery -A app.workers.celery_app worker --loglevel=info
+    command: celery -A app.workers.celery_app worker --loglevel=info --pool=solo
     env_file:
       - .env
     environment:
       DATABASE_URL: postgresql+psycopg://jobhunter:jobhunter@postgres:5432/ai_job_hunter
       REDIS_URL: redis://redis:6379/0
     volumes:
-      - ./backend:/app
+      - ./apps/api:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,7 +69,7 @@ services:
 
   beat:
     build:
-      context: ./backend
+      context: ./apps/api
       dockerfile: Dockerfile
     command: celery -A app.workers.celery_app beat --loglevel=info
     env_file:
@@ -78,20 +78,21 @@ services:
       DATABASE_URL: postgresql+psycopg://jobhunter:jobhunter@postgres:5432/ai_job_hunter
       REDIS_URL: redis://redis:6379/0
     volumes:
-      - ./backend:/app
+      - ./apps/api:/app
     depends_on:
       - worker
 
-  frontend:
+  web:
     build:
-      context: ./frontend
+      context: ./apps/web
       dockerfile: Dockerfile
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
+      API_PROXY_TARGET: http://api:8000
     ports:
       - "3000:3000"
     volumes:
-      - ./frontend:/app
+      - ./apps/web:/app
       - /app/node_modules
       - /app/.next
     depends_on:
