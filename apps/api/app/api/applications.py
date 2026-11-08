@@ -52,8 +52,10 @@ def list_applications(
                 "job_location": job.location if job else None,
                 "source_url": job.source_url if job else None,
                 "match_score": job.match_score if job else None,
+                "opportunity_type": job.opportunity_type if job else None,
+                "job_source": job.source if job else None,
                 "company_name": company.name if company else None,
-                "contact_email": contact.email if contact else None,
+                "contact_email": contact.email if contact else (job.apply_email if job else None),
                 "contact_name": contact.full_name if contact else None,
             }
         )

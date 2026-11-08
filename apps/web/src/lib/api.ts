@@ -144,6 +144,8 @@ export type ApplicationItem = {
   job_location?: string | null;
   source_url?: string | null;
   match_score?: number | null;
+  opportunity_type?: string | null;
+  job_source?: string | null;
   company_name?: string | null;
   contact_email?: string | null;
   contact_name?: string | null;
