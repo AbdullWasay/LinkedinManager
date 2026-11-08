@@ -197,7 +197,7 @@ def purge_inauthentic_jobs(
     db: Session = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id),
 ) -> dict:
-    """Soft-delete form-board scrapes, guessed emails, and roles with no real contact path."""
+    """Soft-delete API-apply roles, form scrapes, guessed emails, and jobs with no email path."""
     jobs = db.query(Job).filter(Job.user_id == user_id, Job.is_deleted.is_(False)).all()
     removed = 0
     kept = 0

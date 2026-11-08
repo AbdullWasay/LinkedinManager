@@ -104,10 +104,18 @@ def overview(db: Session = Depends(get_db), user_id=Depends(get_current_user_id)
     }
 
 
+def _as_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def _bucket_key(dt: datetime, granularity: str) -> str:
+    """Stable UTC bucket keys so DB timestamps always match series points."""
+    dt = _as_utc(dt)
     if granularity == "hour":
-        return dt.replace(minute=0, second=0, microsecond=0).isoformat()
-    return dt.date().isoformat()
+        return dt.strftime("%Y-%m-%dT%H:00:00Z")
+    return dt.strftime("%Y-%m-%d")
 
 
 @router.get("/daily")
@@ -129,8 +137,7 @@ def daily(
         steps = 2
         step = timedelta(hours=1)
     elif selected == "24h":
-        start = now - timedelta(hours=23)
-        start = start.replace(minute=0, second=0, microsecond=0)
+        start = (now - timedelta(hours=23)).replace(minute=0, second=0, microsecond=0)
         granularity = "hour"
         steps = 24
         step = timedelta(hours=1)
@@ -158,12 +165,12 @@ def daily(
         .filter(Job.user_id == user_id, Job.is_deleted.is_(False), Job.discovered_at >= start)
         .all()
     )
+    # Prefer sent_at when present; fall back to created_at for older rows.
     emails = (
-        db.query(EmailMessage.created_at)
+        db.query(EmailMessage.sent_at, EmailMessage.created_at)
         .filter(
             EmailMessage.user_id == user_id,
             EmailMessage.direction == "outbound",
-            EmailMessage.created_at >= start,
         )
         .all()
     )
@@ -173,18 +180,26 @@ def daily(
     for (ts,) in jobs:
         if not ts:
             continue
-        key = _bucket_key(ts.astimezone(timezone.utc), granularity)
+        try:
+            key = _bucket_key(ts, granularity)
+        except Exception:
+            continue
         jobs_by[key] = jobs_by.get(key, 0) + 1
-    for (ts,) in emails:
+    for sent_at, created_at in emails:
+        ts = sent_at or created_at
         if not ts:
             continue
-        key = _bucket_key(ts.astimezone(timezone.utc), granularity)
+        try:
+            aware = _as_utc(ts)
+        except Exception:
+            continue
+        if aware < start:
+            continue
+        key = _bucket_key(aware, granularity)
         emails_by[key] = emails_by.get(key, 0) + 1
 
     series = []
-    cursor = start if granularity == "hour" else start
-    if granularity == "hour":
-        cursor = start.replace(minute=0, second=0, microsecond=0)
+    cursor = start.replace(minute=0, second=0, microsecond=0) if granularity == "hour" else start
     for i in range(steps):
         point = cursor + (step * i)
         key = _bucket_key(point, granularity)
@@ -193,8 +208,8 @@ def daily(
             {
                 "date": key,
                 "label": label,
-                "jobs_found": jobs_by.get(key, 0),
-                "emails_sent": emails_by.get(key, 0),
+                "jobs_found": int(jobs_by.get(key, 0)),
+                "emails_sent": int(emails_by.get(key, 0)),
             }
         )
 

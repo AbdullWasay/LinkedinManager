@@ -235,16 +235,14 @@ AUTHENTIC_EMAIL_STATUSES = {"verified", "listed"}
 
 
 def is_authentic_opportunity(apply_meta: dict[str, Any]) -> bool:
-    """Keep only roles we can actually act on with a real contact path.
+    """Keep only roles we can email-apply to with a real contact path.
 
-    Authentic means:
-    - email outreach with a non-guessed apply email, or
-    - explicit API/POST apply instructions
-    Form-board scrapes and guessed emails are rejected.
+    API/POST-apply listings (e.g. Propr) are excluded — this app only does email outreach.
+    Form-board scrapes and guessed emails are also rejected.
     """
     mode = str(apply_meta.get("application_mode") or "").lower()
     if mode == "api_apply":
-        return bool(apply_meta.get("api_endpoint") or apply_meta.get("apply_url"))
+        return False
     if mode == "email":
         email = str(apply_meta.get("apply_email") or "").strip()
         if not email or "@" not in email:

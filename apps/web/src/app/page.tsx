@@ -59,13 +59,13 @@ export default function DashboardPage() {
     {
       label: "Email outreach pool",
       value: analytics?.email_outreach_jobs ?? "—",
-      href: "/jobs?mode=email",
+      href: "/jobs",
       hint: "Jobs with email apply mode (not all are ready yet)",
     },
     {
       label: "Jobs discovered",
       value: analytics?.jobs_discovered ?? "—",
-      href: "/jobs?mode=all",
+      href: "/jobs",
       hint: "All saved remote matches",
     },
     {

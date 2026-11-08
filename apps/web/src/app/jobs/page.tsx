@@ -37,75 +37,64 @@ type Job = {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
 
-type ModeFilter = "email" | "api" | "all";
 type ScoreFilter = "any" | "70" | "55";
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
-  const [mode, setMode] = useState<ModeFilter>("email");
   const [minScore, setMinScore] = useState<ScoreFilter>("any");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function load(opts?: { mode?: ModeFilter; minScore?: ScoreFilter }) {
-    const nextMode = opts?.mode ?? mode;
+  async function load(opts?: { minScore?: ScoreFilter }) {
     const nextScore = opts?.minScore ?? minScore;
-    const params = new URLSearchParams({ remote_only: "true", limit: "100" });
-    if (nextMode === "email") {
-      params.set("application_mode", "email");
-    } else if (nextMode === "api") {
-      params.set("application_mode", "api_apply");
-    }
+    const params = new URLSearchParams({
+      remote_only: "true",
+      limit: "100",
+      application_mode: "email",
+    });
     if (nextScore !== "any") params.set("min_score", nextScore);
 
     const res = await fetch(`${API_URL}/api/v1/jobs?${params}`, { credentials: "include" });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
-    // Only show authentic contact-path roles (verified email or API apply)
+    // Email outreach only — never show API/POST-apply listings.
     const items: Job[] = (data.items || []).filter((j: Job) => {
-      if (j.application_mode === "api_apply") return true;
+      if (j.application_mode === "api_apply") return false;
       if (j.application_mode === "email" && j.apply_email) {
         const status = j.match_details?.application?.email_status;
         return status !== "guessed";
       }
       return false;
     });
-    if (nextMode === "all") {
-      // already filtered to authentic
-    }
     setJobs(items);
     setTotal(items.length);
   }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const nextMode = (params.get("mode") as ModeFilter) || (params.get("view") as ModeFilter) || "email";
     const scoreParam = params.get("min_score");
     const nextScore: ScoreFilter = scoreParam === "70" || scoreParam === "55" ? scoreParam : "any";
-    const safeMode = ["email", "api", "all"].includes(nextMode) ? nextMode : "email";
-    setMode(safeMode);
     setMinScore(nextScore);
-    load({ mode: safeMode, minScore: nextScore }).catch((err: Error) => setError(err.message));
+    load({ minScore: nextScore }).catch((err: Error) => setError(err.message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function syncUrl(next: { mode: ModeFilter; minScore: ScoreFilter }) {
+  function syncUrl(next: { minScore: ScoreFilter }) {
     const url = new URL(window.location.href);
-    url.searchParams.set("mode", next.mode);
+    url.searchParams.delete("mode");
+    url.searchParams.delete("view");
     if (next.minScore === "any") url.searchParams.delete("min_score");
     else url.searchParams.set("min_score", next.minScore);
     window.history.replaceState({}, "", url.toString());
   }
 
-  async function applyFilters(next: { mode?: ModeFilter; minScore?: ScoreFilter }) {
+  async function applyFilters(next: { minScore?: ScoreFilter }) {
     const payload = {
-      mode: next.mode ?? mode,
       minScore: next.minScore ?? minScore,
     };
-    setMode(payload.mode);
     setMinScore(payload.minScore);
     syncUrl(payload);
     setError(null);
@@ -175,7 +164,6 @@ export default function JobsPage() {
 
   function modeChip(job: Job) {
     if (job.source === "cold_website") return <span className="chip chip-info">Cold website offer</span>;
-    if (job.application_mode === "api_apply") return <span className="chip chip-info">API apply (POST)</span>;
     if (job.application_mode === "email" || !job.manual_apply_required)
       return <span className="chip chip-teal">Email outreach</span>;
     return <span className="chip chip-warn">Manual form apply</span>;
@@ -188,7 +176,7 @@ export default function JobsPage() {
           <p className="text-sm font-semibold text-[var(--accent)]">Outreach</p>
           <h2 className="mt-1 text-3xl">Remote job matches</h2>
           <p className="mt-2 max-w-2xl text-[var(--text-muted)]">
-            Only authentic roles with a real email or API apply path. Form-board scrapes are excluded.
+            Email-apply roles only. API/POST apply listings and form-board scrapes are excluded.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -202,26 +190,6 @@ export default function JobsPage() {
       </header>
 
       <section className="surface rounded-2xl p-4 space-y-4">
-        <div>
-          <p className="label">Application mode</p>
-          <div className="filter-bar">
-            {(
-              [
-                ["email", "Email outreach"],
-                ["api", "API apply"],
-                ["all", "All authentic"],
-              ] as const
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                className={mode === key ? "btn btn-primary" : "btn btn-secondary"}
-                onClick={() => applyFilters({ mode: key })}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="label" htmlFor="score-filter">
@@ -271,9 +239,7 @@ export default function JobsPage() {
       <div className="space-y-3">
         {filtered.map((job) => {
           const sourceLink = job.source_url || job.apply_url;
-          const isApi = job.application_mode === "api_apply";
-          const isEmail = !isApi && (job.application_mode === "email" || !job.manual_apply_required);
-          const apiEndpoint = job.match_details?.application?.api_endpoint || (isApi ? job.apply_url : null);
+          const isEmail = job.application_mode === "email" || !job.manual_apply_required;
 
           return (
             <article key={job.id} className="surface rounded-2xl p-5">
@@ -306,14 +272,6 @@ export default function JobsPage() {
                       </a>
                     </p>
                   )}
-                  {isApi && apiEndpoint && (
-                    <p className="mt-2 break-all text-sm">
-                      <span className="text-[var(--text-muted)]">POST apply: </span>
-                      <code className="rounded bg-[var(--bg-soft)] px-1.5 py-0.5 text-[var(--info)]">
-                        {apiEndpoint}
-                      </code>
-                    </p>
-                  )}
                 </div>
                 <div className="text-right">
                   <div className="text-3xl font-semibold text-[#0b3b3a]">
@@ -341,7 +299,7 @@ export default function JobsPage() {
                     Open listing
                   </a>
                 )}
-                {(isApi || (!isEmail && job.manual_apply_status === "pending")) && (
+                {!isEmail && job.manual_apply_status === "pending" && (
                   <>
                     <button
                       className="btn btn-secondary"

@@ -108,32 +108,6 @@ STARTUP_OUTREACH: list[DiscoveredJob] = [
             "startup": True,
         },
     ),
-    DiscoveredJob(
-        title="Software Engineer – NestJS / Next.js (Remote or Dubai)",
-        source="startup_outreach",
-        source_url="https://www.propr.xyz/hiring/software-engineer",
-        company_name="Propr",
-        description=(
-            "Propr is building an OS for prop firms. Remote or Dubai. Comp $120k–$180k+ incentives. "
-            "NestJS / Next.js / TypeScript. How to apply: submit via a POST request to their API.\n"
-            "POST https://propr.xyz/api/hiring/apply\n"
-            'Request body includes roleSlug "software-engineer", name, email, link, coverNote, '
-            "exceptionalNote, telegramHandle."
-        ),
-        location="Remote or Dubai, UAE",
-        employment_type="full-time",
-        is_remote=True,
-        salary_range="USD 120000-180000+",
-        opportunity_type="vacancy",
-        raw_payload={
-            "application_mode": "api_apply",
-            "api_endpoint": "https://propr.xyz/api/hiring/apply",
-            "apply_method": "POST",
-            "company_domain": "propr.xyz",
-            "detection_reason": "Propr requires POST apply to their hiring API",
-            "startup": True,
-        },
-    ),
 ]
 
 
