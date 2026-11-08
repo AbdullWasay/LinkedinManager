@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://jobhunter:jobhunter@localhost:5432/ai_job_hunter"
     redis_url: str = "redis://localhost:6379/0"
 
-    default_user_email: str = "abdulwasay@example.com"
+    default_user_email: str = "abdul.wasay308@gmail.com"
     default_user_name: str = "Abdul Wasay"
 
     # App login (required for deploy). Only these emails can sign in with Google,
