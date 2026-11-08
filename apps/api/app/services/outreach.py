@@ -420,6 +420,10 @@ def send_draft(db: Session, user_id: UUID, draft: EmailDraft) -> dict[str, Any]:
                 },
             )
         )
+    # Keep pipeline tabs clean: sent opportunities belong under Applied.
+    if job is not None:
+        job.status = "applied"
+        job.version = (job.version or 1) + 1
     contact.last_contacted_at = datetime.now(timezone.utc)
     db.commit()
     return sent

@@ -5,12 +5,28 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id
-from app.db.models import Company, Job
+from app.db.models import Application, Company, Job
 from app.db.session import get_db
 from app.integrations.google import sheets as sheets_integration
 from app.schemas.jobs import DiscoveryRunResponse, JobListResponse, JobResponse, ManualApplyUpdate
 from app.services.application_mode import detect_application_mode, is_authentic_job_row
 from app.services.discovery import run_discovery
+
+SENT_APPLICATION_STAGES = ("sent", "replied", "interview", "offer")
+
+
+def _exclude_sent_job_ids(db: Session, user_id: UUID, query):
+    """Hide opportunities that already had outreach emailed — those live under Applied."""
+    sent_job_ids = (
+        db.query(Application.job_id)
+        .filter(
+            Application.user_id == user_id,
+            Application.is_deleted.is_(False),
+            Application.stage.in_(SENT_APPLICATION_STAGES),
+        )
+        .subquery()
+    )
+    return query.filter(~Job.id.in_(sent_job_ids))
 
 
 def _merge_apply_meta(job: Job, apply_meta: dict) -> None:
@@ -74,6 +90,9 @@ def list_jobs(
     user_id: UUID = Depends(get_current_user_id),
 ) -> JobListResponse:
     q = db.query(Job).filter(Job.user_id == user_id, Job.is_deleted.is_(False))
+    # Cold website leads have their own tab.
+    q = q.filter(Job.source != "cold_website")
+    q = _exclude_sent_job_ids(db, user_id, q)
     if status:
         q = q.filter(Job.status == status)
     if min_score is not None:

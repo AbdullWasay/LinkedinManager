@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user_id
-from app.db.models import Company, Job
+from app.db.models import Application, Company, Job
 from app.db.seed import ensure_default_user
 from app.db.session import get_db
 from app.integrations.job_sources.cold_website import ColdWebsiteAdapter
@@ -15,6 +15,8 @@ from app.services.discovery import _profile_dict, ingest_discovered_job
 from app.services.outreach import create_draft_for_job
 
 router = APIRouter(prefix="/cold-leads", tags=["cold-leads"])
+
+SENT_APPLICATION_STAGES = ("sent", "replied", "interview", "offer")
 
 
 @router.post("/discover")
@@ -70,9 +72,23 @@ def discover_leads(
 
 @router.get("")
 def list_leads(db: Session = Depends(get_db), user_id: UUID = Depends(get_current_user_id)) -> dict:
+    sent_job_ids = (
+        db.query(Application.job_id)
+        .filter(
+            Application.user_id == user_id,
+            Application.is_deleted.is_(False),
+            Application.stage.in_(SENT_APPLICATION_STAGES),
+        )
+        .subquery()
+    )
     jobs = (
         db.query(Job)
-        .filter(Job.user_id == user_id, Job.is_deleted.is_(False), Job.source == "cold_website")
+        .filter(
+            Job.user_id == user_id,
+            Job.is_deleted.is_(False),
+            Job.source == "cold_website",
+            ~Job.id.in_(sent_job_ids),
+        )
         .order_by(Job.discovered_at.desc())
         .limit(100)
         .all()
