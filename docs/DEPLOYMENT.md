@@ -25,8 +25,10 @@ Vercel hosts the **Next.js UI**. FastAPI, Celery, Postgres, and Redis cannot run
 ## 2) Deploy UI (Vercel)
 
 1. Import the same GitHub repo in [Vercel](https://vercel.com).
-2. **Root Directory:** `apps/web` (Project Settings → General).
-3. Framework preset: **Next.js**.
+2. **Root Directory:** `apps/web` (Project Settings → General → Root Directory).
+   - This is the recommended path. `apps/web/vercel.json` marks the app as Next.js.
+   - If you leave Root Directory empty (repo root), root `vercel.json` builds the `web` workspace instead.
+3. Framework preset: **Next.js** (auto-detected).
 4. Environment variables:
 
 | Name | Value |
@@ -35,6 +37,8 @@ Vercel hosts the **Next.js UI**. FastAPI, Celery, Postgres, and Redis cannot run
 | `NEXT_PUBLIC_API_URL` | leave empty (same-origin `/api` via rewrite) **or** your API URL |
 
 5. Deploy. Your site URL will be like `https://linkedin-manager.vercel.app`.
+
+**Note:** Vercel only hosts the Next.js UI. Celery workers and long-lived FastAPI must stay on Render (see `render.yaml`). That is the supported full-stack layout for this repo.
 
 ## 3) Wire Google OAuth for production
 
