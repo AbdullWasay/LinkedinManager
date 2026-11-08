@@ -13,7 +13,7 @@ type Lead = {
   status?: string;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
 
 export default function LinkedInLeadsPage() {
   const [items, setItems] = useState<Lead[]>([]);
@@ -30,7 +30,7 @@ export default function LinkedInLeadsPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   async function load() {
-    const res = await fetch(`${API_URL}/api/v1/linkedin-leads`);
+    const res = await fetch(`${API_URL}/api/v1/linkedin-leads`, { credentials: "include" });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     setItems(data.items || []);
@@ -46,7 +46,7 @@ export default function LinkedInLeadsPage() {
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/linkedin-leads`, {
+      const res = await fetch(`${API_URL}/api/v1/linkedin-leads`, { credentials: "include", 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

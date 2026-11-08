@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Activity,
   Ban,
@@ -9,12 +9,14 @@ import {
   CheckCircle2,
   FileText,
   LayoutDashboard,
+  LogOut,
   Mail,
   Megaphone,
   Settings,
   Store,
   UserRound,
 } from "lucide-react";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -33,6 +35,20 @@ const NAV = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  if (pathname === "/login") {
+    return <>{children}</>;
+  }
+
+  async function logout() {
+    try {
+      await api.logout();
+    } catch {
+      /* ignore */
+    }
+    router.replace("/login");
+  }
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[240px_1fr]">
@@ -61,6 +77,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          <button
+            type="button"
+            onClick={logout}
+            className="nav-link mt-2 flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-soft)]"
+          >
+            <LogOut size={16} />
+            Log out
+          </button>
         </nav>
       </aside>
       <main className="px-5 py-6 lg:px-8 lg:py-8">{children}</main>

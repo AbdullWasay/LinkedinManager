@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     default_user_email: str = "abdulwasay@example.com"
     default_user_name: str = "Abdul Wasay"
 
+    # App login (required for deploy). Only these emails can sign in with Google,
+    # and/or AUTH_PASSWORD for password login.
+    auth_password: str = ""
+    allowed_login_emails: str = ""
+    auth_disabled: bool = False
+    session_max_age_hours: int = 168  # 7 days
+
     token_encryption_key: str = ""
 
     google_client_id: str = ""
@@ -63,6 +70,13 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> List[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def allowed_login_email_list(self) -> List[str]:
+        raw = (self.allowed_login_emails or "").strip()
+        if not raw:
+            return [self.default_user_email.strip().lower()] if self.default_user_email else []
+        return [e.strip().lower() for e in raw.split(",") if e.strip()]
 
 
 @lru_cache

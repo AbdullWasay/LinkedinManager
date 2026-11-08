@@ -42,7 +42,7 @@ export function NextSendTimer({ initial }: { initial: NextSend | null }) {
 
   useEffect(() => {
     const id = setInterval(() => {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/analytics/next-send`)
+      fetch(`${(process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "")}/api/v1/analytics/next-send`, { credentials: "include" })
         .then((r) => r.json())
         .then((data) => {
           setInfo(data);

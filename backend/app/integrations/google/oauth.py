@@ -73,6 +73,30 @@ def exchange_code(code: str) -> Credentials:
     return flow.credentials
 
 
+def fetch_google_profile(creds: Credentials) -> dict:
+    """Return Google account email/name for allowlist checks."""
+    import httpx
+
+    token = creds.token
+    if not token:
+        raise HTTPException(status_code=502, detail="Google token missing after OAuth")
+    with httpx.Client(timeout=20.0) as client:
+        res = client.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        res.raise_for_status()
+        data = res.json()
+    email = str(data.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=502, detail="Google did not return an email address")
+    return {
+        "email": email,
+        "name": str(data.get("name") or data.get("given_name") or "").strip(),
+        "verified": bool(data.get("verified_email", True)),
+    }
+
+
 def get_credential_row(db: Session, user_id: UUID) -> Optional[OAuthCredential]:
     return (
         db.query(OAuthCredential)

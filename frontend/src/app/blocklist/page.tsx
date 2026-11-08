@@ -11,7 +11,7 @@ type Entry = {
   created_at?: string | null;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
 
 export default function BlocklistPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -25,7 +25,7 @@ export default function BlocklistPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   async function load() {
-    const res = await fetch(`${API_URL}/api/v1/blocklist`);
+    const res = await fetch(`${API_URL}/api/v1/blocklist`, { credentials: "include" });
     if (!res.ok) throw new Error(await res.text());
     setEntries(await res.json());
   }
@@ -49,7 +49,7 @@ export default function BlocklistPage() {
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/blocklist`, {
+      const res = await fetch(`${API_URL}/api/v1/blocklist`, { credentials: "include", 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -75,7 +75,7 @@ export default function BlocklistPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/blocklist/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_URL}/api/v1/blocklist/${id}`, { credentials: "include",  method: "DELETE" });
       if (!res.ok) throw new Error(await res.text());
       setMessage("Removed from blocklist");
       await load();

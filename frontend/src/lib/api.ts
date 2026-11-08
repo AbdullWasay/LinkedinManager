@@ -1,8 +1,10 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Prefer same-origin `/api` (Next rewrite → backend) so the login cookie stays first-party.
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}/api/v1${path}`, {
     ...init,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers || {}),
@@ -10,6 +12,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     cache: "no-store",
   });
   if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined" && !path.startsWith("/auth/")) {
+      const next = window.location.pathname;
+      if (next !== "/login") {
+        window.location.href = "/login";
+      }
+    }
     let detail = res.statusText;
     try {
       const body = await res.json();
@@ -60,6 +68,8 @@ export type Settings = {
 
 export type AuthStatus = {
   authenticated: boolean;
+  auth_required?: boolean;
+  login_methods?: { password?: boolean; google?: boolean };
   user_id?: string;
   email?: string;
   name?: string;
@@ -69,6 +79,15 @@ export type AuthStatus = {
   spreadsheet_url?: string | null;
   drive_folder_id?: string | null;
   google_configured: boolean;
+};
+
+export type SessionUser = {
+  authenticated: boolean;
+  auth_required: boolean;
+  email?: string | null;
+  name?: string | null;
+  user_id?: string | null;
+  login_methods?: { password?: boolean; google?: boolean };
 };
 
 export type AnalyticsOverview = {
@@ -163,8 +182,20 @@ export const api = {
   resumeAutomation: () => request<Settings>("/automation/resume", { method: "POST" }),
   emergencyStop: () => request<Settings>("/automation/emergency-stop", { method: "POST" }),
   authStatus: () => request<AuthStatus>("/auth/status"),
+  me: () => request<SessionUser>("/auth/me"),
+  login: (password: string) =>
+    request<{ ok: boolean; email?: string; message?: string }>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
+  consumeHandoff: (token: string) =>
+    request<{ ok: boolean; email?: string; message?: string }>("/auth/session", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+  logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   disconnectGoogle: () => request<{ ok: boolean }>("/auth/google/disconnect", { method: "POST" }),
-  googleLoginUrl: `${API_URL}/api/v1/auth/google/login`,
+  googleLoginUrl: `${(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "")}/api/v1/auth/google/login`,
   syncStatus: () => request<SyncStatus>("/sync/status"),
   pushSheets: () => request<Record<string, unknown>>("/sync/sheets/push", { method: "POST" }),
   pullSheets: () => request<Record<string, unknown>>("/sync/sheets/pull", { method: "POST" }),

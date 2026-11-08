@@ -16,7 +16,7 @@ type Resume = {
   updated_at?: string | null;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
 
 export default function CvsPage() {
   const [items, setItems] = useState<Resume[]>([]);
@@ -30,7 +30,7 @@ export default function CvsPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   async function load() {
-    const res = await fetch(`${API_URL}/api/v1/resumes`);
+    const res = await fetch(`${API_URL}/api/v1/resumes`, { credentials: "include" });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     setItems(data.items || []);
@@ -46,7 +46,7 @@ export default function CvsPage() {
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/resumes`, {
+      const res = await fetch(`${API_URL}/api/v1/resumes`, { credentials: "include", 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -80,7 +80,7 @@ export default function CvsPage() {
     try {
       const body = new FormData();
       body.append("file", file);
-      const res = await fetch(`${API_URL}/api/v1/resumes/${resumeId}/upload`, {
+      const res = await fetch(`${API_URL}/api/v1/resumes/${resumeId}/upload`, { credentials: "include", 
         method: "POST",
         body,
       });
@@ -98,7 +98,7 @@ export default function CvsPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/resumes/${resume.id}`, {
+      const res = await fetch(`${API_URL}/api/v1/resumes/${resume.id}`, { credentials: "include", 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ drive_url: nextUrl }),
@@ -117,7 +117,7 @@ export default function CvsPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/resumes/${resume.id}`, {
+      const res = await fetch(`${API_URL}/api/v1/resumes/${resume.id}`, { credentials: "include", 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -137,7 +137,7 @@ export default function CvsPage() {
   async function makeDefault(resume: Resume) {
     setBusy(true);
     try {
-      const res = await fetch(`${API_URL}/api/v1/resumes/${resume.id}`, {
+      const res = await fetch(`${API_URL}/api/v1/resumes/${resume.id}`, { credentials: "include", 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ is_master: true }),
@@ -155,7 +155,7 @@ export default function CvsPage() {
     if (!confirm(`Delete ${resume.name}?`)) return;
     setBusy(true);
     try {
-      const res = await fetch(`${API_URL}/api/v1/resumes/${resume.id}`, { method: "DELETE" });
+      const res = await fetch(`${API_URL}/api/v1/resumes/${resume.id}`, { credentials: "include",  method: "DELETE" });
       if (!res.ok) throw new Error(await res.text());
       await load();
     } catch (err) {

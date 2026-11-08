@@ -35,7 +35,7 @@ type Job = {
   };
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
 
 type ModeFilter = "email" | "api" | "all";
 type ScoreFilter = "any" | "70" | "55";
@@ -61,7 +61,7 @@ export default function JobsPage() {
     }
     if (nextScore !== "any") params.set("min_score", nextScore);
 
-    const res = await fetch(`${API_URL}/api/v1/jobs?${params}`);
+    const res = await fetch(`${API_URL}/api/v1/jobs?${params}`, { credentials: "include" });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     // Only show authentic contact-path roles (verified email or API apply)
@@ -121,13 +121,13 @@ export default function JobsPage() {
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/jobs/discover?min_score=55&sync_sheets=true`, {
+      const res = await fetch(`${API_URL}/api/v1/jobs/discover?min_score=55&sync_sheets=true`, { credentials: "include", 
         method: "POST",
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      await fetch(`${API_URL}/api/v1/jobs/reclassify-modes`, { method: "POST" }).catch(() => undefined);
-      const purged = await fetch(`${API_URL}/api/v1/jobs/purge-inauthentic`, { method: "POST" })
+      await fetch(`${API_URL}/api/v1/jobs/reclassify-modes`, { credentials: "include",  method: "POST" }).catch(() => undefined);
+      const purged = await fetch(`${API_URL}/api/v1/jobs/purge-inauthentic`, { credentials: "include",  method: "POST" })
         .then((r) => r.json())
         .catch(() => null);
       const removed = purged?.removed ?? 0;
@@ -148,7 +148,7 @@ export default function JobsPage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/jobs/${jobId}/manual-apply`, {
+      const res = await fetch(`${API_URL}/api/v1/jobs/${jobId}/manual-apply`, { credentials: "include", 
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ manual_apply_status }),

@@ -18,7 +18,7 @@ type Draft = {
   created_at?: string | null;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
 
 export default function ReadyToSendPage() {
   const [items, setItems] = useState<Draft[]>([]);
@@ -27,7 +27,7 @@ export default function ReadyToSendPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   async function load() {
-    const res = await fetch(`${API_URL}/api/v1/outreach/drafts?ready=true&limit=100`);
+    const res = await fetch(`${API_URL}/api/v1/outreach/drafts?ready=true&limit=100`, { credentials: "include" });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
     setItems(data.items || []);
@@ -42,7 +42,7 @@ export default function ReadyToSendPage() {
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/outreach/drafts/${id}/send`, { method: "POST" });
+      const res = await fetch(`${API_URL}/api/v1/outreach/drafts/${id}/send`, { credentials: "include",  method: "POST" });
       if (!res.ok) throw new Error(await res.text());
       setMessage("Email sent");
       await load();
