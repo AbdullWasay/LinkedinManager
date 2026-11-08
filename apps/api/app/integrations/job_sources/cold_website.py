@@ -1,10 +1,11 @@
 """Auto-discover UK/US local businesses that look like they have no website.
 
-Flow (free, no API key):
+Free flow (no invented emails):
 1. Nominatim finds local businesses by city + trade
-2. Skip places that already have a proper website
-3. Pull a public email from OSM tags or from public web pages (DuckDuckGo → page scrape)
-4. Queue as cold_website outreach for automatic drafting/sending
+2. Keep places with a public email and no proper website (missing, or social/booking only)
+3. For custom-domain emails, skip if that domain already serves a real website
+4. Also crawl public tourism listing pages for personal emails with no independent webUrl
+5. Queue as cold_website outreach for automatic drafting/sending
 """
 
 from __future__ import annotations
@@ -12,47 +13,67 @@ from __future__ import annotations
 import logging
 import re
 import time
-from typing import Any, Optional
-from urllib.parse import quote, unquote
+from typing import Optional
+from urllib.parse import quote, urljoin
 
 import httpx
 
 from app.integrations.job_sources.base import DiscoveredJob
-from app.services.cold_lead_validation import email_is_personal, market_allowed
+from app.services.cold_lead_validation import PERSONAL_DOMAINS, email_is_personal, market_allowed
 from app.services.email_extract import FAKE_DOMAINS, _clean, is_noise_email
 
 logger = logging.getLogger(__name__)
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-DDG_URL = "https://html.duckduckgo.com/html/"
 EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)
+TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.I | re.S)
+LISTING_HREF_RE = re.compile(r'href="([^"]*listing/[^"]+)"', re.I)
+WEBURL_RE = re.compile(r'webUrl"\s*:\s*"([^"]*)"', re.I)
 
 SEARCH_TARGETS: list[dict[str, str]] = [
     {"market": "UK", "city": "Manchester"},
     {"market": "UK", "city": "Birmingham"},
     {"market": "UK", "city": "Leeds"},
     {"market": "UK", "city": "Bristol"},
+    {"market": "UK", "city": "Liverpool"},
+    {"market": "UK", "city": "Sheffield"},
+    {"market": "UK", "city": "Nottingham"},
     {"market": "UK", "city": "Edinburgh"},
     {"market": "UK", "city": "Glasgow"},
+    {"market": "UK", "city": "Cardiff"},
     {"market": "US", "city": "Austin"},
     {"market": "US", "city": "Denver"},
     {"market": "US", "city": "Portland"},
     {"market": "US", "city": "Nashville"},
     {"market": "US", "city": "Phoenix"},
     {"market": "US", "city": "Charlotte"},
+    {"market": "US", "city": "Columbus"},
+    {"market": "US", "city": "Milwaukee"},
 ]
 
 TRADE_QUERIES = [
+    "cafe",
+    "restaurant",
+    "bar",
+    "pub",
     "hairdresser",
     "barber",
-    "cafe",
-    "plumber",
-    "electrician",
-    "dentist",
     "florist",
     "bakery",
+    "plumber",
+    "electrician",
     "car wash",
     "nail salon",
+    "laundry",
+    "butcher",
+    "pet grooming",
+]
+
+DIRECTORY_SOURCES: list[dict[str, str]] = [
+    {"market": "UK", "city": "Manchester", "url": "https://www.visitmanchester.com/food-and-drink"},
+    {"market": "UK", "city": "Manchester", "url": "https://www.visitmanchester.com/shopping"},
+    {"market": "UK", "city": "Birmingham", "url": "https://visitbirmingham.com/food-and-drink"},
+    {"market": "UK", "city": "Bristol", "url": "https://www.visitbristol.co.uk/food-and-drink"},
 ]
 
 SOCIAL_HOST_HINTS = (
@@ -63,13 +84,39 @@ SOCIAL_HOST_HINTS = (
     "x.com",
     "linkedin.com",
     "yelp.com",
+    "yelp.co",
     "tripadvisor.",
     "booksy.com",
     "treatwell.",
     "fresha.com",
+    "linktr.ee",
+)
+
+DIRECTORY_HOST_HINTS = (
     "visitmanchester.com",
+    "visitbirmingham.com",
+    "visitbristol.co.uk",
+    "simpleviewinc.com",
     "timeout.com",
-    "yelp.co",
+)
+
+CHAIN_HINTS = (
+    "wagamama",
+    "starbucks",
+    "costa",
+    "mcdonald",
+    "kfc",
+    "subway",
+    "nando",
+    "pizza express",
+    "brewdog",
+    "pret a manger",
+    "greggs",
+    "burger king",
+    "five guys",
+    "chipotle",
+    "selfridges",
+    "gordon ramsay",
 )
 
 OWNER_OK_LOCAL = {
@@ -86,6 +133,20 @@ OWNER_OK_LOCAL = {
     "office",
     "mail",
     "me",
+    "reservations",
+}
+
+BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-GB,en;q=0.9",
+}
+
+NOMINATIM_HEADERS = {
+    "User-Agent": "LinkedinManager/1.0 (cold-website research; https://mylinkedinmanager.vercel.app)",
 }
 
 
@@ -94,11 +155,24 @@ def _slug(text: str) -> str:
     return s or "lead"
 
 
+def _unescape(url: str) -> str:
+    return (url or "").replace("\\/", "/").replace("\\u002F", "/")
+
+
 def _website_is_missing_or_social(website: str) -> bool:
-    w = (website or "").strip().lower()
-    if not w:
+    w = _unescape(website or "").strip().lower()
+    if not w or w in ("http://", "https://", "#", "null", "none"):
         return True
-    return any(h in w for h in SOCIAL_HOST_HINTS)
+    if any(h in w for h in SOCIAL_HOST_HINTS):
+        return True
+    if any(h in w for h in DIRECTORY_HOST_HINTS):
+        return True
+    return False
+
+
+def _looks_like_chain(name: str, email: str = "") -> bool:
+    blob = f"{name} {email}".lower()
+    return any(h in blob for h in CHAIN_HINTS)
 
 
 def _owner_email_ok(email: str) -> bool:
@@ -110,11 +184,32 @@ def _owner_email_ok(email: str) -> bool:
         return False
     if any(x in e for x in ("noreply", "no-reply", "sentry.io", "wixpress.com", "googleapis.com")):
         return False
-    if local in OWNER_OK_LOCAL or email_is_personal(e):
+    if any(h in domain for h in ("visitmanchester", "visitbirmingham", "visitbristol", "simpleview")):
+        return False
+    if local in OWNER_OK_LOCAL or email_is_personal(e) or domain in PERSONAL_DOMAINS:
         return True
     if is_noise_email(e):
         return False
     return True
+
+
+def _domain_has_live_website(client: httpx.Client, email: str) -> bool:
+    """If the contact uses a custom domain that already serves a site, skip."""
+    e = _clean(email)
+    if "@" not in e:
+        return False
+    domain = e.split("@", 1)[1].lower()
+    if domain in PERSONAL_DOMAINS or domain.endswith(".gov.uk") or domain.endswith(".gov"):
+        return domain.endswith(".gov.uk") or domain.endswith(".gov")
+    for host in (domain, f"www.{domain}"):
+        for scheme in ("https", "http"):
+            try:
+                resp = client.get(f"{scheme}://{host}", timeout=8.0)
+                if resp.status_code < 400 and len(resp.text or "") > 1500:
+                    return True
+            except Exception:
+                continue
+    return False
 
 
 def lead_to_discovered(
@@ -138,7 +233,7 @@ def lead_to_discovered(
     title = f"Website build offer — {business_name}"
     description = (
         f"Cold website outreach to {owner_name} at {business_name} ({business_type}). "
-        f"Location: {location}. Marked as having no proper website (or only social/directory links). "
+        f"Location: {location}. Appears to have no proper website (missing, social-only, or booking-link only). "
         f"Offer: modern business website, Google visibility, contact/booking. "
         f"{notes or ''}"
     ).strip()
@@ -170,176 +265,194 @@ def lead_to_discovered(
     )
 
 
-def _ddg_links(client: httpx.Client, query: str, n: int = 4) -> list[str]:
-    try:
-        resp = client.post(DDG_URL, data={"q": query}, timeout=20.0)
-    except Exception:
-        return []
-    hrefs = re.findall(r"uddg=([^&\"]+)", resp.text)
-    out: list[str] = []
-    for h in hrefs:
-        url = unquote(h)
-        if url.startswith("http") and "duckduckgo.com" not in url:
-            out.append(url)
-        if len(out) >= n:
-            break
-    if not out:
-        out = re.findall(r'class="result__a"[^>]*href="(https?://[^"]+)"', resp.text)[:n]
-    return out
+def _extract_title(html: str, fallback: str) -> str:
+    m = TITLE_RE.search(html or "")
+    if not m:
+        return fallback
+    title = re.sub(r"\s+", " ", m.group(1)).strip()
+    title = title.split("|")[0].split(" - ")[0].split(" – ")[0].strip()
+    return title or fallback
 
 
-def _emails_from_url(client: httpx.Client, url: str) -> list[str]:
-    try:
-        page = client.get(url, timeout=15.0)
-        if page.status_code >= 400:
-            return []
-        found = sorted({_clean(e) for e in EMAIL_RE.findall(page.text)})
-        return [e for e in found if _owner_email_ok(e)]
-    except Exception:
-        return []
+def _nominatim_leads(client: httpx.Client, *, limit: int = 20) -> list[DiscoveredJob]:
+    day = int(time.strftime("%j"))
+    cities = SEARCH_TARGETS[day % len(SEARCH_TARGETS) :] + SEARCH_TARGETS[: day % len(SEARCH_TARGETS)]
+    trades = TRADE_QUERIES[day % len(TRADE_QUERIES) :] + TRADE_QUERIES[: day % len(TRADE_QUERIES)]
 
+    jobs: list[DiscoveredJob] = []
+    seen_emails: set[str] = set()
 
-def _find_email_for_business(
-    client: httpx.Client,
-    *,
-    business_name: str,
-    city: str,
-    market: str,
-    tagged_email: str = "",
-) -> tuple[str, str]:
-    """Return (email, source_url)."""
-    tagged = _clean(tagged_email)
-    if tagged and _owner_email_ok(tagged):
-        return tagged, ""
-
-    queries = [
-        f'"{business_name}" {city} email contact',
-        f'"{business_name}" {city} @gmail.com OR @yahoo.co.uk OR @outlook.com',
+    # Always hit high-yield city×trade pairs, then rotate extras for coverage.
+    pairs: list[tuple[str, str, str]] = [
+        ("UK", "Manchester", "cafe"),
+        ("UK", "Manchester", "bar"),
+        ("UK", "Birmingham", "hairdresser"),
+        ("UK", "Birmingham", "bakery"),
+        ("UK", "Birmingham", "cafe"),
+        ("UK", "Leeds", "bar"),
+        ("UK", "Bristol", "pub"),
+        ("UK", "Liverpool", "cafe"),
+        ("US", "Milwaukee", "bakery"),
+        ("US", "Austin", "cafe"),
+        ("US", "Denver", "barber"),
+        ("US", "Portland", "florist"),
     ]
-    if market.upper() == "US":
-        queries.append(f'"{business_name}" {city} "@gmail.com" OR "@yahoo.com" contact')
+    for i, target in enumerate(cities[:6]):
+        pairs.append((target["market"], target["city"], trades[i % len(trades)]))
+        pairs.append((target["market"], target["city"], trades[(i + 4) % len(trades)]))
+    # Dedupe while preserving order
+    deduped: list[tuple[str, str, str]] = []
+    seen_pairs: set[tuple[str, str, str]] = set()
+    for pair in pairs:
+        if pair in seen_pairs:
+            continue
+        seen_pairs.add(pair)
+        deduped.append(pair)
+    pairs = deduped[:18]
 
-    for q in queries:
-        for link in _ddg_links(client, q, n=4):
-            emails = _emails_from_url(client, link)
-            if emails:
-                # Prefer personal inbox for owner outreach.
-                personal = [e for e in emails if email_is_personal(e)]
-                chosen = personal[0] if personal else emails[0]
-                return chosen, link
-        time.sleep(0.4)
-    return "", ""
+    for market, city, trade in pairs:
+        if not market_allowed(market):
+            continue
+        country = "UK" if market.upper() == "UK" else "USA"
+        query = f"{trade} {city} {country}"
+        try:
+            resp = client.get(
+                NOMINATIM_URL,
+                params={"q": query, "format": "json", "limit": 25, "extratags": 1, "addressdetails": 1},
+                headers=NOMINATIM_HEADERS,
+                timeout=25.0,
+            )
+            time.sleep(1.05)
+            if resp.status_code >= 400:
+                continue
+            places = resp.json()
+        except Exception:
+            logger.exception("Nominatim failed for %s", query)
+            continue
+
+        for place in places:
+            tags = place.get("extratags") or {}
+            name = (place.get("name") or (place.get("display_name") or "").split(",")[0]).strip()
+            if len(name) < 2 or _looks_like_chain(name):
+                continue
+            email = _clean(tags.get("email") or tags.get("contact:email") or "")
+            if not email or not _owner_email_ok(email) or email in seen_emails:
+                continue
+            website = tags.get("website") or tags.get("contact:website") or tags.get("url") or ""
+            if not _website_is_missing_or_social(str(website)):
+                continue
+            if _domain_has_live_website(client, email):
+                continue
+
+            osm_type = place.get("osm_type") or "node"
+            osm_id = place.get("osm_id")
+            source_url = (
+                f"https://www.openstreetmap.org/{osm_type}/{osm_id}"
+                if osm_id
+                else f"https://www.openstreetmap.org/search?query={quote(name + ' ' + city)}"
+            )
+            owner = name.split()[0]
+            jobs.append(
+                lead_to_discovered(
+                    business_name=name,
+                    owner_name=owner,
+                    owner_email=email,
+                    market=market,
+                    city=city,
+                    business_type=trade,
+                    source_url=source_url,
+                    notes="Auto-discovered via OpenStreetMap (public email, no proper website tagged).",
+                    email_status="listed" if not email_is_personal(email) else "unverified",
+                )
+            )
+            seen_emails.add(email)
+            if len(jobs) >= limit:
+                return jobs
+    return jobs
 
 
-def _nominatim_places(
-    client: httpx.Client,
-    *,
-    trade: str,
-    city: str,
-    market: str,
-    limit: int = 6,
-) -> list[dict[str, Any]]:
-    countrycodes = "gb" if market.upper() == "UK" else "us"
-    try:
-        resp = client.get(
-            NOMINATIM_URL,
-            params={
-                "q": f"{trade} {city}",
-                "format": "json",
-                "limit": str(limit),
-                "addressdetails": 1,
-                "extratags": 1,
-                "countrycodes": countrycodes,
-            },
-            timeout=20.0,
-        )
-        if resp.status_code >= 400:
-            return []
-        return list(resp.json() or [])
-    except Exception:
-        logger.exception("Nominatim failed for %s %s", trade, city)
-        return []
+def _directory_leads(client: httpx.Client, *, limit: int = 10) -> list[DiscoveredJob]:
+    """Personal-email listings whose webUrl is missing or social-only."""
+    jobs: list[DiscoveredJob] = []
+    seen: set[str] = set()
+    day = int(time.strftime("%j"))
+    sources = DIRECTORY_SOURCES[day % len(DIRECTORY_SOURCES) :] + DIRECTORY_SOURCES[: day % len(DIRECTORY_SOURCES)]
+
+    for source in sources[:3]:
+        market = source["market"]
+        city = source["city"]
+        try:
+            page = client.get(source["url"], headers=BROWSER_HEADERS, timeout=25.0)
+            if page.status_code >= 400:
+                continue
+            listing_urls = []
+            for href in LISTING_HREF_RE.findall(page.text):
+                full = urljoin(source["url"], href)
+                if full not in listing_urls:
+                    listing_urls.append(full)
+        except Exception:
+            logger.exception("Directory fetch failed %s", source["url"])
+            continue
+
+        for listing_url in listing_urls[:18]:
+            try:
+                resp = client.get(listing_url, headers=BROWSER_HEADERS, timeout=20.0)
+                time.sleep(0.2)
+                if resp.status_code >= 400:
+                    continue
+                html = resp.text
+            except Exception:
+                continue
+
+            emails = [_clean(e) for e in EMAIL_RE.findall(html)]
+            emails = [e for e in emails if _owner_email_ok(e) and email_is_personal(e)]
+            if not emails:
+                continue
+            email = emails[0]
+            if email in seen:
+                continue
+
+            webs = [_unescape(w) for w in WEBURL_RE.findall(html)]
+            if any(not _website_is_missing_or_social(w) for w in webs):
+                continue
+
+            name = _extract_title(html, fallback=_slug(listing_url).replace("-", " ").title())
+            if len(name) < 2 or _looks_like_chain(name, email):
+                continue
+            if _domain_has_live_website(client, email):
+                continue
+
+            jobs.append(
+                lead_to_discovered(
+                    business_name=name,
+                    owner_name=name.split()[0],
+                    owner_email=email,
+                    market=market,
+                    city=city,
+                    business_type="local business",
+                    source_url=listing_url,
+                    notes="Auto-discovered from a public directory listing (personal email, no independent website).",
+                    email_status="unverified",
+                )
+            )
+            seen.add(email)
+            if len(jobs) >= limit:
+                return jobs
+    return jobs
 
 
 class ColdWebsiteAdapter:
     name = "cold_website"
 
     def fetch(self) -> list[DiscoveredJob]:
-        day = int(time.strftime("%j"))
-        targets = SEARCH_TARGETS[day % len(SEARCH_TARGETS) :] + SEARCH_TARGETS[: day % len(SEARCH_TARGETS)]
-        targets = targets[:3]
-        trades = TRADE_QUERIES[day % len(TRADE_QUERIES) :] + TRADE_QUERIES[: day % len(TRADE_QUERIES)]
-        trades = trades[:3]
-
-        headers = {
-            "User-Agent": "LinkedinManager/1.0 (cold website research; https://mylinkedinmanager.vercel.app)",
-            "Accept": "application/json,text/html",
-        }
         jobs: list[DiscoveredJob] = []
-        seen_emails: set[str] = set()
-        seen_names: set[str] = set()
-
-        with httpx.Client(timeout=25.0, headers=headers, follow_redirects=True) as client:
-            for target in targets:
-                market = target["market"]
-                city = target["city"]
-                if not market_allowed(market):
+        seen: set[str] = set()
+        with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+            for lead in _nominatim_leads(client, limit=18) + _directory_leads(client, limit=8):
+                email = str((lead.raw_payload or {}).get("apply_email") or "")
+                if not email or email in seen:
                     continue
-                for trade in trades:
-                    places = _nominatim_places(client, trade=trade, city=city, market=market, limit=5)
-                    time.sleep(1.1)  # Nominatim usage policy
-                    for place in places:
-                        name = (place.get("name") or str(place.get("display_name") or "").split(",")[0]).strip()
-                        if len(name) < 2:
-                            continue
-                        key = f"{name.lower()}|{city.lower()}"
-                        if key in seen_names:
-                            continue
-                        tags = place.get("extratags") or {}
-                        website = str(tags.get("website") or tags.get("contact:website") or "")
-                        if not _website_is_missing_or_social(website):
-                            continue
-
-                        tagged_email = str(tags.get("email") or tags.get("contact:email") or "")
-                        email, found_url = _find_email_for_business(
-                            client,
-                            business_name=name,
-                            city=city,
-                            market=market,
-                            tagged_email=tagged_email,
-                        )
-                        if not email or email in seen_emails:
-                            continue
-
-                        osm_url = (
-                            f"https://www.openstreetmap.org/{place.get('osm_type')}/{place.get('osm_id')}"
-                            if place.get("osm_type") and place.get("osm_id")
-                            else f"https://www.openstreetmap.org/search?query={quote(name + ' ' + city)}"
-                        )
-                        source_url = found_url or osm_url
-                        personal = email_is_personal(email)
-                        jobs.append(
-                            lead_to_discovered(
-                                business_name=name,
-                                owner_name=name.split()[0],
-                                owner_email=email,
-                                market=market,
-                                city=city,
-                                business_type=trade,
-                                source_url=source_url,
-                                notes="Auto-discovered: public email found; no proper website listed.",
-                                email_status="listed" if not personal else "unverified",
-                            )
-                        )
-                        seen_emails.add(email)
-                        seen_names.add(key)
-                        if len(jobs) >= 18:
-                            logger.info("Cold website auto-discovery found %s leads", len(jobs))
-                            return jobs
-                    if len(jobs) >= 18:
-                        break
-                if len(jobs) >= 18:
-                    break
-
+                jobs.append(lead)
+                seen.add(email)
         logger.info("Cold website auto-discovery found %s leads", len(jobs))
         return jobs

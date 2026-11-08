@@ -23,3 +23,4 @@ apps/api/uploads/
 celerybeat-schedule*
 dump.rdb
 .vercel
+.env*

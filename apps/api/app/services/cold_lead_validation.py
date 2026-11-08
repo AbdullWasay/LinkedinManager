@@ -36,6 +36,9 @@ PERSONAL_DOMAINS = {
     "aol.com",
     "proton.me",
     "protonmail.com",
+    "btinternet.com",
+    "sky.com",
+    "virginmedia.com",
 }
 
 
