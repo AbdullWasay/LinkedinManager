@@ -92,7 +92,7 @@ export default function ColdOutreachPage() {
 
       <div className="surface flex flex-wrap items-center justify-between gap-3 rounded-2xl p-5">
         <div>
-          <h3 className="text-lg text-[#0b3b3a]">Auto research</h3>
+          <h3 className="text-lg text-[var(--heading)]">Auto research</h3>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             Runs on schedule via GitHub Actions. Use the button to pull fresh leads now.
           </p>
@@ -103,7 +103,7 @@ export default function ColdOutreachPage() {
       </div>
 
       <section className="space-y-3">
-        <h3 className="text-lg text-[#0b3b3a]">Auto-discovered leads ({items.length})</h3>
+        <h3 className="text-lg text-[var(--heading)]">Auto-discovered leads ({items.length})</h3>
         {items.map((lead) => (
           <article key={lead.id} className="surface rounded-2xl p-4">
             <div className="mb-2 flex flex-wrap gap-2">
@@ -112,7 +112,7 @@ export default function ColdOutreachPage() {
               {lead.business_type && <span className="chip">{lead.business_type}</span>}
               {lead.status && <span className="chip">{lead.status}</span>}
             </div>
-            <h4 className="break-words text-lg text-[#0b3b3a]">{lead.company_name || lead.title}</h4>
+            <h4 className="break-words text-lg text-[var(--heading)]">{lead.company_name || lead.title}</h4>
             <p className="mt-1 break-all text-sm text-[var(--text-muted)]">
               {[lead.location, lead.apply_email].filter(Boolean).join(" · ") || "—"}
             </p>

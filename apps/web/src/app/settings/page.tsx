@@ -71,7 +71,7 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <header>
         <p className="text-sm font-semibold text-[var(--accent)]">Controls</p>
-        <h2 className="mt-1 text-4xl text-[#0b3b3a]">Settings</h2>
+        <h2 className="mt-1 text-4xl text-[var(--heading)]">Settings</h2>
       </header>
 
       {error && (
@@ -88,7 +88,7 @@ export default function SettingsPage() {
       {settings && (
         <>
           <section className="surface space-y-3 rounded-2xl p-5">
-            <h3 className="text-2xl text-[#0b3b3a]">Google</h3>
+            <h3 className="text-2xl text-[var(--heading)]">Google</h3>
             <p className="text-sm text-[var(--text-muted)]">
               Status: {auth?.google_connected ? "connected" : "not connected"} · Sheets sync runs in the
               background.
@@ -106,7 +106,7 @@ export default function SettingsPage() {
           </section>
 
           <section className="surface space-y-3 rounded-2xl p-5">
-            <h3 className="text-2xl text-[#0b3b3a]">Automation safety</h3>
+            <h3 className="text-2xl text-[var(--heading)]">Automation safety</h3>
             <p className="text-sm text-[var(--text-muted)]">
               Paused: {settings.automation_paused ? "yes" : "no"} · Emergency stop:{" "}
               {settings.emergency_stop ? "yes" : "no"} · Auto-send:{" "}
@@ -127,7 +127,7 @@ export default function SettingsPage() {
 
           <form onSubmit={save} className="surface space-y-4 rounded-2xl p-5">
             <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] p-4">
-              <label className="flex items-center gap-3 text-[0.95rem] font-semibold text-[#0b3b3a]">
+              <label className="flex items-center gap-3 text-[0.95rem] font-semibold text-[var(--heading)]">
                 <input
                   type="checkbox"
                   checked={settings.auto_send_enabled}

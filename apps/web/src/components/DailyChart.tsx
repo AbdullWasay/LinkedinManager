@@ -24,7 +24,7 @@ export function DailyChart({
 
   return (
     <article className="surface rounded-2xl p-5">
-      <h3 className="text-xl text-[#0b3b3a]">{title}</h3>
+      <h3 className="text-xl text-[var(--heading)]">{title}</h3>
       <div className="mt-4 overflow-x-auto">
         <svg width={Math.max(520, series.length * (barWidth + 6))} height={height + 40} role="img">
           {series.map((point, index) => {

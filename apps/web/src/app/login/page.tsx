@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { api } from "@/lib/api";
 
 // Google OAuth must hit the backend host directly (redirect URI is registered there).
@@ -52,16 +53,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
+    <div className="relative flex min-h-screen items-center justify-center px-4">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle compact />
+      </div>
       <div className="surface w-full max-w-md rounded-3xl p-8">
         <p className="text-sm font-semibold text-[var(--accent)]">Private access</p>
-        <h1 className="mt-2 text-3xl text-[#0b3b3a]">Sign in</h1>
+        <h1 className="mt-2 text-3xl text-[var(--heading)]">Sign in</h1>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
           Only your allowlisted account can open this dashboard.
         </p>
 
         {error && (
-          <div className="mt-4 rounded-xl border border-[color:#fecaca] bg-white px-3 py-2 text-sm text-[var(--danger)]">
+          <div className="mt-4 rounded-xl border border-[color:#fecaca] bg-[var(--bg-elevated)] px-3 py-2 text-sm text-[var(--danger)]">
             {error}
           </div>
         )}

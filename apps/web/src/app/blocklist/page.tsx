@@ -204,7 +204,7 @@ export default function BlocklistPage() {
           >
             <div>
               <span className="chip chip-teal">{entry.entry_type}</span>
-              <div className="mt-2 font-semibold text-[#0b3b3a]">{entry.value}</div>
+              <div className="mt-2 font-semibold text-[var(--heading)]">{entry.value}</div>
               {entry.reason && <div className="mt-0.5 text-sm text-[var(--text-muted)]">{entry.reason}</div>}
             </div>
             <button className="btn btn-danger" disabled={busy} onClick={() => remove(entry.id)}>

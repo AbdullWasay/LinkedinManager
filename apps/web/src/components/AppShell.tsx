@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -60,15 +61,16 @@ function NavLinks({
               active ? "nav-link-active" : "hover:bg-[var(--bg-soft)]"
             )}
           >
-            <Icon size={16} className={active ? "text-white" : undefined} />
+            <Icon size={16} />
             {item.label}
           </Link>
         );
       })}
+      <ThemeToggle />
       <button
         type="button"
         onClick={onLogout}
-        className="nav-link mt-2 flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-soft)]"
+        className="nav-link mt-1 flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-soft)]"
       >
         <LogOut size={16} />
         Log out
@@ -85,7 +87,7 @@ function BrandBlock({ compact = false }: { compact?: boolean }) {
       </p>
       <h1
         className={cn(
-          "font-semibold text-[#0b3b3a]",
+          "font-semibold text-[var(--heading)]",
           compact ? "mt-0.5 text-base" : "mt-1 text-xl"
         )}
       >
@@ -137,33 +139,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
-      {/* Desktop sidebar */}
-      <aside className="app-sidebar sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-[var(--border)] bg-white/95 px-4 py-5 backdrop-blur lg:flex">
+      <aside className="app-sidebar sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-5 lg:flex">
         <BrandBlock />
         <NavLinks pathname={pathname} onLogout={logout} />
       </aside>
 
-      {/* Mobile top bar */}
-      <div className="sticky top-0 z-40 border-b border-[var(--border)] bg-white/95 backdrop-blur lg:hidden">
+      <div className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--bg-elevated)] lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <BrandBlock compact />
-          <button
-            type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] text-[#0b3b3a] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            aria-expanded={menuOpen}
-            aria-controls={panelId}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            {menuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle compact />
+            <button
+              type="button"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] text-[var(--heading)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              aria-controls={panelId}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
         <div className="border-t border-[var(--border)] bg-[var(--bg-soft)] px-4 py-2">
           <p className="text-xs font-semibold text-[var(--text-muted)]">{activeLabel}</p>
         </div>
       </div>
 
-      {/* Mobile drawer */}
       <div
         className={cn("fixed inset-0 z-50 lg:hidden", menuOpen ? "pointer-events-auto" : "pointer-events-none")}
         aria-hidden={!menuOpen}
@@ -171,16 +173,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <button
           type="button"
           className={cn(
-            "absolute inset-0 bg-[#0b3b3a]/40 transition-opacity duration-200",
+            "absolute inset-0 transition-opacity duration-200",
             menuOpen ? "opacity-100" : "opacity-0"
           )}
+          style={{ background: "var(--overlay)" }}
           aria-label="Close menu overlay"
           onClick={() => setMenuOpen(false)}
         />
         <aside
           id={panelId}
           className={cn(
-            "absolute inset-y-0 right-0 flex w-[min(86vw,320px)] flex-col bg-white shadow-2xl transition-transform duration-200 ease-out",
+            "absolute inset-y-0 right-0 flex w-[min(86vw,320px)] flex-col bg-[var(--bg-elevated)] shadow-2xl transition-transform duration-200 ease-out",
             menuOpen ? "translate-x-0" : "translate-x-full"
           )}
         >
@@ -188,7 +191,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <BrandBlock compact />
             <button
               type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] text-[#0b3b3a]"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--heading)]"
               aria-label="Close menu"
               onClick={() => setMenuOpen(false)}
             >

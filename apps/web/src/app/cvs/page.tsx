@@ -193,7 +193,7 @@ export default function CvsPage() {
       )}
 
       <form onSubmit={onCreate} className="surface space-y-4 rounded-2xl p-5">
-        <h3 className="text-xl text-[#0b3b3a]">Add CV</h3>
+        <h3 className="text-xl text-[var(--heading)]">Add CV</h3>
         <div>
           <label className="label" htmlFor="cv-name">
             CV name
@@ -244,7 +244,7 @@ export default function CvsPage() {
             onChange={(e) => setDriveUrl(e.target.value)}
           />
         </div>
-        <label className="flex items-center gap-2 text-sm font-medium text-[#0b3b3a]">
+        <label className="flex items-center gap-2 text-sm font-medium text-[var(--heading)]">
           <input type="checkbox" checked={isMaster} onChange={(e) => setIsMaster(e.target.checked)} />
           Use as default when no role match
         </label>
@@ -271,7 +271,7 @@ export default function CvsPage() {
                     <span className="chip chip-warn">No file yet</span>
                   )}
                 </div>
-                <h3 className="text-xl text-[#0b3b3a]">{resume.name}</h3>
+                <h3 className="text-xl text-[var(--heading)]">{resume.name}</h3>
               </div>
               <div className="flex flex-wrap gap-2">
                 {!resume.is_master && (

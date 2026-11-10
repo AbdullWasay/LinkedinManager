@@ -55,7 +55,7 @@ export default function IntegrationsPage() {
       )}
 
       <section className="surface space-y-4 rounded-2xl p-5">
-        <h3 className="text-xl text-[#0b3b3a]">Connection</h3>
+        <h3 className="text-xl text-[var(--heading)]">Connection</h3>
         <ul className="space-y-2 text-sm text-[var(--text-muted)]">
           <li>Google OAuth configured: {auth?.google_configured ? "yes" : "no"}</li>
           <li>Connected: {auth?.google_connected ? "yes" : "no"}</li>

@@ -101,7 +101,7 @@ export default function LinkedInLeadsPage() {
 
       <div className="surface flex flex-col gap-4 rounded-2xl p-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h3 className="text-lg text-[#0b3b3a]">Daily auto research</h3>
+          <h3 className="text-lg text-[var(--heading)]">Daily auto research</h3>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             Pulls HN Who is hiring, YC startups, and founder-flavored board posts with real emails.
             Runs on the GitHub Actions schedule — use the button to research now.
@@ -125,7 +125,7 @@ export default function LinkedInLeadsPage() {
       </div>
 
       <section className="space-y-3">
-        <h3 className="text-xl text-[#0b3b3a]">Discovered leads ({items.length})</h3>
+        <h3 className="text-xl text-[var(--heading)]">Discovered leads ({items.length})</h3>
         {loading && <SoftLoader compact label="Loading leads" />}
         {!loading && items.length === 0 && (
           <div className="surface rounded-2xl p-5 text-[var(--text-muted)]">
@@ -150,7 +150,7 @@ export default function LinkedInLeadsPage() {
                     <span className="chip">{Math.round(item.match_score)}% match</span>
                   )}
                 </div>
-                <h4 className="mt-2 break-words text-lg text-[#0b3b3a]">
+                <h4 className="mt-2 break-words text-lg text-[var(--heading)]">
                   {displayText(item.title, "Untitled role")}
                 </h4>
                 <p className="mt-1 break-all text-sm text-[var(--text-muted)]">{meta || "—"}</p>

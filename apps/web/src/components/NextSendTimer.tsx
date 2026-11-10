@@ -64,12 +64,12 @@ export function NextSendTimer({ initial }: { initial: NextSend | null }) {
     <article
       className="rounded-2xl border border-[var(--border)] p-5"
       style={{
-        background: "linear-gradient(160deg, rgba(204,251,241,0.45) 0%, #ffffff 60%)",
+        background: "linear-gradient(160deg, var(--kpi-wash) 0%, var(--bg-elevated) 60%)",
         boxShadow: "var(--shadow)",
       }}
     >
       <p className="text-sm font-semibold text-[var(--accent)]">Next send</p>
-      <p className="mt-3 text-xl font-semibold leading-snug text-[#0b3b3a] sm:text-2xl">
+      <p className="mt-3 text-xl font-semibold leading-snug text-[var(--heading)] sm:text-2xl">
         {batchCount} email{batchCount === 1 ? "" : "s"} will be sent in
       </p>
       <p className="mt-2 font-mono text-3xl font-semibold tracking-tight text-[var(--accent)] sm:text-4xl">

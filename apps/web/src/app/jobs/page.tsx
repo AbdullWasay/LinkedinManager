@@ -276,23 +276,12 @@ export default function JobsPage() {
                       <span className="chip chip-warn">Guessed email — not auto-sent</span>
                     )}
                   </div>
-                  <h3 className="break-words text-xl text-[#0b3b3a]">{job.title}</h3>
+                  <h3 className="break-words text-xl text-[var(--heading)]">{job.title}</h3>
                   <p className="mt-1 break-words text-[var(--text-muted)]">
-                    {job.company_name || "Unknown company"} · {job.location || "Remote"} · {job.source}
+                    {job.company_name || "Unknown company"}
+                    {job.location ? ` · ${job.location}` : ""}
                   </p>
-                  {sourceLink && (
-                    <p className="mt-2 break-all text-sm">
-                      <span className="text-[var(--text-muted)]">Source: </span>
-                      <a
-                        className="font-semibold text-[var(--accent)] underline"
-                        href={sourceLink}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {sourceLink}
-                      </a>
-                    </p>
-                  )}
+                  <p className="mt-1 text-sm text-[var(--text-muted)]">Source channel: {job.source}</p>
                 </div>
                 <div className="shrink-0 rounded-2xl bg-[var(--accent-soft)] px-3 py-2 text-right">
                   <div className="text-2xl font-semibold text-[var(--accent)]">
@@ -304,18 +293,49 @@ export default function JobsPage() {
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-col gap-1 text-sm text-[var(--text-muted)] sm:flex-row sm:flex-wrap sm:gap-3">
-                {job.salary_range && <span className="break-words">Pay: {job.salary_range}</span>}
-                <span>{job.is_remote ? "Remote" : "Not remote"}</span>
-                {email && <span className="break-all">Email: {email}</span>}
+              <div className="meta-grid mt-4">
+                {job.salary_range && (
+                  <div className="meta-item">
+                    <span className="meta-label">Pay</span>
+                    <span className="meta-value">{job.salary_range}</span>
+                  </div>
+                )}
+                <div className="meta-item">
+                  <span className="meta-label">Work mode</span>
+                  <span className="meta-value">{job.is_remote ? "Remote" : "Not remote"}</span>
+                </div>
+                {email && (
+                  <div className="meta-item">
+                    <span className="meta-label">Email</span>
+                    <span className="meta-value">{email}</span>
+                  </div>
+                )}
                 {job.discovered_at && (
-                  <span>Found: {new Date(job.discovered_at).toLocaleString()}</span>
+                  <div className="meta-item">
+                    <span className="meta-label">Found</span>
+                    <span className="meta-value">{new Date(job.discovered_at).toLocaleString()}</span>
+                  </div>
                 )}
               </div>
 
+              {sourceLink && (
+                <p className="mt-3 break-all text-sm">
+                  <span className="text-[var(--text-muted)]">Listing: </span>
+                  <a
+                    className="font-semibold text-[var(--accent)] underline"
+                    href={sourceLink}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {sourceLink}
+                  </a>
+                </p>
+              )}
+
               {job.match_details?.application?.detection_reason && (
-                <p className="mt-2 break-words text-sm text-[var(--text-muted)]">
-                  Why: {job.match_details.application.detection_reason}
+                <p className="mt-3 break-words rounded-xl bg-[var(--bg-soft)] px-3 py-2 text-sm text-[var(--text-muted)]">
+                  <span className="font-semibold text-[var(--heading)]">Why: </span>
+                  {job.match_details.application.detection_reason}
                 </p>
               )}
 

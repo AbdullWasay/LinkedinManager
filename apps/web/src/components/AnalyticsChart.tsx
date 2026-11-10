@@ -71,7 +71,7 @@ export function AnalyticsChart({
     <article className="surface rounded-2xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg text-[#0b3b3a]">Outreach activity</h3>
+          <h3 className="text-lg text-[var(--heading)]">Outreach activity</h3>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             <span style={{ color: EMAIL_COLOR }}>Emails sent {emailTotal}</span>
             <span className="mx-2 text-[#9bb5b2]">·</span>
@@ -93,11 +93,11 @@ export function AnalyticsChart({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-4 text-sm">
-        <span className="inline-flex items-center gap-2 text-[#0b3b3a]">
+        <span className="inline-flex items-center gap-2 text-[var(--heading)]">
           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: EMAIL_COLOR }} />
           Emails sent
         </span>
-        <span className="inline-flex items-center gap-2 text-[#0b3b3a]">
+        <span className="inline-flex items-center gap-2 text-[var(--heading)]">
           <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: JOBS_COLOR }} />
           Jobs found
         </span>
@@ -181,7 +181,7 @@ export function AnalyticsChart({
                   x2={hovered.x}
                   y1={padY}
                   y2={height - padY}
-                  stroke="#0b3b3a"
+                  stroke="var(--heading)"
                   strokeDasharray="4 4"
                   opacity="0.35"
                 />
@@ -193,7 +193,7 @@ export function AnalyticsChart({
                   const boxY = Math.max(8, tipY - boxH - 12);
                   return (
                     <>
-                      <rect x={boxX} y={boxY} width={boxW} height={boxH} rx={12} fill="#0b3b3a" opacity="0.96" />
+                      <rect x={boxX} y={boxY} width={boxW} height={boxH} rx={12} fill="var(--heading)" opacity="0.96" />
                       <text
                         x={boxX + 14}
                         y={boxY + 20}

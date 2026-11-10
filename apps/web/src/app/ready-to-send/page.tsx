@@ -92,7 +92,7 @@ export default function ReadyToSendPage() {
                   {draft.email_status && <span className="chip">{draft.email_status} email</span>}
                   {draft.resume_name && <span className="chip chip-info">CV: {draft.resume_name}</span>}
                 </div>
-                <h3 className="text-xl text-[#0b3b3a]">{draft.subject}</h3>
+                <h3 className="text-xl text-[var(--heading)]">{draft.subject}</h3>
                 <p className="mt-1 text-[var(--text-muted)]">
                   {draft.job_title || "Untitled role"}
                   {draft.company_name ? ` · ${draft.company_name}` : ""}
@@ -105,7 +105,7 @@ export default function ReadyToSendPage() {
                 {draft.created_at ? new Date(draft.created_at).toLocaleString() : ""}
               </p>
             </div>
-            <pre className="mt-4 max-h-40 overflow-auto whitespace-pre-wrap rounded-xl bg-[var(--bg-soft)] p-3 text-sm text-[#0b3b3a]">
+            <pre className="mt-4 max-h-40 overflow-auto whitespace-pre-wrap rounded-xl bg-[var(--bg-soft)] p-3 text-sm text-[var(--heading)]">
               {draft.body}
             </pre>
             <div className="mt-4 flex flex-wrap gap-2">

@@ -84,7 +84,7 @@ export default function ProfilePage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <header>
         <p className="text-sm font-semibold text-[var(--accent)]">Candidate</p>
-        <h2 className="mt-1 text-4xl text-[#0b3b3a]">Profile</h2>
+        <h2 className="mt-1 text-4xl text-[var(--heading)]">Profile</h2>
         <p className="mt-2 text-[var(--text-muted)]">
           Preloaded from your background. Edit freely — the system will not fabricate employment history.
         </p>

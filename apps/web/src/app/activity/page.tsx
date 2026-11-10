@@ -35,7 +35,7 @@ export default function ActivityPage() {
     <div className="space-y-6">
       <header>
         <p className="text-sm font-semibold text-[var(--accent)]">Audit</p>
-        <h2 className="mt-1 text-4xl text-[#0b3b3a]">Activity</h2>
+        <h2 className="mt-1 text-4xl text-[var(--heading)]">Activity</h2>
         <p className="mt-2 max-w-2xl text-[var(--text-muted)]">
           Grouped summaries first (e.g. “10 emails sent”). Switch to raw logs when you need detail.
         </p>
@@ -94,7 +94,7 @@ export default function ActivityPage() {
               className="surface flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4"
             >
               <div>
-                <h3 className="text-xl text-[#0b3b3a]">{item.title}</h3>
+                <h3 className="text-xl text-[var(--heading)]">{item.title}</h3>
                 <p className="mt-1 text-sm text-[var(--text-muted)]">
                   {item.created_at ? new Date(item.created_at).toLocaleString() : "—"}
                 </p>
@@ -116,7 +116,7 @@ export default function ActivityPage() {
                 </span>
                 <span>{new Date(log.created_at).toLocaleString()}</span>
               </div>
-              <p className="mt-1 text-[#0b3b3a]">{log.message || "—"}</p>
+              <p className="mt-1 text-[var(--heading)]">{log.message || "—"}</p>
             </article>
           ))}
         </div>

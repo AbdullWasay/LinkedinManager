@@ -136,7 +136,7 @@ export default function ApplicationsPage() {
                         <span className="chip">{Math.round(item.match_score)}% match</span>
                       )}
                     </div>
-                    <h3 className="break-words text-xl text-[#0b3b3a]">
+                    <h3 className="break-words text-xl text-[var(--heading)]">
                       {item.company_name || item.job_title || "Untitled"}
                     </h3>
                     <p className="mt-1 break-words text-[var(--text-muted)]">

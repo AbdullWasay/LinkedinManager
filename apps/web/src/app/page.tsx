@@ -124,7 +124,7 @@ export default function DashboardPage() {
                 className="kpi-card rounded-2xl border border-[var(--border)] p-4 transition hover:-translate-y-0.5"
                 style={{
                   background:
-                    "linear-gradient(160deg, rgba(204,251,241,0.55) 0%, #ffffff 58%)",
+                    "linear-gradient(160deg, var(--kpi-wash) 0%, var(--bg-elevated) 58%)",
                   boxShadow: "var(--shadow)",
                 }}
               >
@@ -164,7 +164,7 @@ export default function DashboardPage() {
               className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3"
             >
               <div className="min-w-0">
-                <p className="break-words font-semibold text-[#0b3b3a]">{item.title}</p>
+                <p className="break-words font-semibold text-[var(--heading)]">{item.title}</p>
                 <p className="mt-0.5 text-sm text-[var(--text-muted)]">
                   {item.created_at ? new Date(item.created_at).toLocaleString() : "—"}
                 </p>
