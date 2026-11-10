@@ -146,32 +146,95 @@ SEEDED_RESUMES = [
 ]
 
 
+def _merge_user_into(db: Session, *, source: User, target: User) -> None:
+    """Move tenant-owned rows from a duplicate user onto the primary account."""
+    from app.db.models import (
+        ActivityLog,
+        Application,
+        BlocklistEntry,
+        Company,
+        Contact,
+        EmailDraft,
+        EmailMessage,
+        Job,
+        OAuthCredential,
+        Resume,
+        SyncState,
+        UserProfile,
+        UserSettings,
+    )
+
+    # Unique-per-user rows: keep target, drop source copies.
+    if db.query(OAuthCredential).filter(OAuthCredential.user_id == target.id).first():
+        db.query(OAuthCredential).filter(OAuthCredential.user_id == source.id).delete(
+            synchronize_session=False
+        )
+    if db.query(UserSettings).filter(UserSettings.user_id == target.id).first():
+        db.query(UserSettings).filter(UserSettings.user_id == source.id).delete(
+            synchronize_session=False
+        )
+    if db.query(UserProfile).filter(UserProfile.user_id == target.id).first():
+        db.query(UserProfile).filter(UserProfile.user_id == source.id).delete(
+            synchronize_session=False
+        )
+    db.query(SyncState).filter(SyncState.user_id == source.id).delete(synchronize_session=False)
+
+    for model in (
+        Job,
+        Application,
+        EmailDraft,
+        EmailMessage,
+        Contact,
+        Company,
+        Resume,
+        BlocklistEntry,
+        ActivityLog,
+        OAuthCredential,
+        UserSettings,
+        UserProfile,
+    ):
+        db.query(model).filter(model.user_id == source.id).update(
+            {model.user_id: target.id},
+            synchronize_session=False,
+        )
+
+
 def ensure_default_user(db: Session) -> User:
     settings = get_settings()
     target_email = (settings.default_user_email or "").strip().lower()
-    user = db.query(User).filter(User.email == target_email).one_or_none()
-    # Single-tenant app: if the bootstrap email changed, reuse the existing account
-    # instead of creating an empty duplicate user (which hides drafts/jobs).
+    allowed = {
+        e.strip().lower()
+        for e in settings.allowed_login_email_list
+        if e.strip()
+    }
+    if target_email:
+        allowed.add(target_email)
+
+    user = db.query(User).filter(User.email == target_email).one_or_none() if target_email else None
+    # Single-tenant app: never create a second account when bootstrap/allowlist email changes.
+    # Always reuse the oldest existing user and rebind its email.
     if user is None:
         existing_users = db.query(User).order_by(User.created_at.asc()).all()
-        if len(existing_users) == 1:
-            user = existing_users[0]
-            if target_email and user.email != target_email:
-                logger.info("Rebinding bootstrap user %s -> %s", user.email, target_email)
-                user.email = target_email
-                if settings.default_user_name:
-                    user.name = settings.default_user_name
-        elif existing_users:
-            # Prefer an allowlisted email if present.
-            allowed = {e.strip().lower() for e in settings.allowed_login_email_list if e.strip()}
+        if existing_users:
             for candidate in existing_users:
-                if (candidate.email or "").strip().lower() in allowed:
+                email = (candidate.email or "").strip().lower()
+                if email in allowed:
                     user = candidate
                     break
             if user is None:
                 user = existing_users[0]
             if target_email and user.email != target_email:
+                logger.info("Rebinding bootstrap user %s -> %s", user.email, target_email)
                 user.email = target_email
+                if settings.default_user_name:
+                    user.name = settings.default_user_name
+            # Collapse accidental duplicates onto the primary account.
+            for extra in existing_users:
+                if extra.id == user.id:
+                    continue
+                _merge_user_into(db, source=extra, target=user)
+                logger.warning("Merged duplicate user %s (%s) into %s", extra.id, extra.email, user.email)
+                db.delete(extra)
     if user is None:
         user = User(email=settings.default_user_email, name=settings.default_user_name)
         db.add(user)
