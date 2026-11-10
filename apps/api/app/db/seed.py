@@ -228,18 +228,23 @@ def ensure_default_user(db: Session) -> User:
                 user.email = target_email
                 if settings.default_user_name:
                     user.name = settings.default_user_name
-            # Collapse accidental duplicates onto the primary account.
-            for extra in existing_users:
-                if extra.id == user.id:
-                    continue
-                _merge_user_into(db, source=extra, target=user)
-                logger.warning("Merged duplicate user %s (%s) into %s", extra.id, extra.email, user.email)
-                db.delete(extra)
     if user is None:
         user = User(email=settings.default_user_email, name=settings.default_user_name)
         db.add(user)
         db.flush()
         logger.info("Created default user %s", user.email)
+
+    # Always collapse any leftover accounts onto the primary Gmail user.
+    duplicates = (
+        db.query(User)
+        .filter(User.id != user.id)
+        .order_by(User.created_at.asc())
+        .all()
+    )
+    for extra in duplicates:
+        _merge_user_into(db, source=extra, target=user)
+        logger.warning("Merged duplicate user %s (%s) into %s", extra.id, extra.email, user.email)
+        db.delete(extra)
 
     if user.profile is None:
         profile = UserProfile(user_id=user.id, **DEFAULT_PROFILE)
