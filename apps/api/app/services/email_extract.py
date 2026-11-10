@@ -94,12 +94,29 @@ HIRING_LOCAL_HINTS = (
 
 def _clean(email: str) -> str:
     # Strip trailing junk that shows up in scraped mailto / HTML entities.
-    e = (email or "").strip().lower()
-    e = e.replace("&quot;", "").replace("&lt;", "").replace("&gt;", "").replace("&#39;", "")
-    e = e.split("?", 1)[0].split("&", 1)[0]
+    e = (email or "").strip()
+    e = (
+        e.replace("\\u003c", "<")
+        .replace("\\u003e", ">")
+        .replace("\\u0026", "&")
+        .replace("\\u0022", '"')
+        .replace("\\/", "/")
+        .replace("&quot;", '"')
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&#39;", "'")
+        .replace('\\"', '"')
+    )
+    # Prefer a clean email match if HTML/JSON debris is glued on.
+    matched = EMAIL_RE.search(e)
+    if matched:
+        e = matched.group(0)
+    e = e.lower().strip()
+    e = e.split("?", 1)[0]
     # Drop accidental HTML/JSON tails glued onto scraped addresses.
     if "@" in e:
         local, _, domain = e.partition("@")
+        local = re.split(r"[^a-z0-9._%+\-]", local, maxsplit=1)[0]
         domain = re.split(r"[^a-z0-9.-]", domain, maxsplit=1)[0]
         e = f"{local}@{domain}"
     return e.strip(".,);]>\"'\\/")

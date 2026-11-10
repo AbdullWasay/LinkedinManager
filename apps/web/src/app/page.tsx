@@ -11,32 +11,38 @@ import {
 } from "@/lib/api";
 import { AnalyticsChart } from "@/components/AnalyticsChart";
 import { NextSendTimer } from "@/components/NextSendTimer";
+import { SoftLoader } from "@/components/SoftLoader";
 
 const KPI_STYLES = {
   cold: {
     accent: "#0f766e",
-    soft: "rgba(15, 118, 110, 0.12)",
-    border: "rgba(15, 118, 110, 0.28)",
+    soft: "rgba(167, 243, 208, 0.45)",
+    border: "rgba(110, 231, 183, 0.55)",
   },
   openings: {
-    accent: "#c2410c",
-    soft: "rgba(194, 65, 12, 0.12)",
-    border: "rgba(194, 65, 12, 0.28)",
+    accent: "#b45309",
+    soft: "rgba(254, 215, 170, 0.5)",
+    border: "rgba(253, 186, 116, 0.55)",
   },
   linkedin: {
     accent: "#1d4ed8",
-    soft: "rgba(29, 78, 216, 0.12)",
-    border: "rgba(29, 78, 216, 0.28)",
+    soft: "rgba(191, 219, 254, 0.55)",
+    border: "rgba(147, 197, 253, 0.6)",
   },
   sent: {
-    accent: "#7c3aed",
-    soft: "rgba(124, 58, 237, 0.12)",
-    border: "rgba(124, 58, 237, 0.28)",
+    accent: "#6d28d9",
+    soft: "rgba(221, 214, 254, 0.55)",
+    border: "rgba(196, 181, 253, 0.6)",
   },
   ready: {
     accent: "#047857",
-    soft: "rgba(4, 120, 87, 0.12)",
-    border: "rgba(4, 120, 87, 0.28)",
+    soft: "rgba(167, 243, 208, 0.4)",
+    border: "rgba(110, 231, 183, 0.5)",
+  },
+  applied: {
+    accent: "#9f1239",
+    soft: "rgba(254, 205, 211, 0.5)",
+    border: "rgba(253, 164, 175, 0.55)",
   },
 } as const;
 
@@ -47,15 +53,18 @@ export default function DashboardPage() {
   const [nextSend, setNextSend] = useState<NextSendInfo | null>(null);
   const [range, setRange] = useState("7d");
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     Promise.all([api.analytics(), api.activitySummary(10), api.nextSend()])
       .then(([a, summary, next]) => {
         setAnalytics(a);
         setActivity(summary.items || []);
         setNextSend(next || a.next_send || null);
       })
-      .catch((err: Error) => setError(err.message));
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -106,6 +115,14 @@ export default function DashboardPage() {
       hint: "Approved drafts waiting in the send queue",
       style: KPI_STYLES.ready,
     },
+    {
+      key: "applied",
+      label: "Total applied",
+      value: analytics?.applications_sent ?? "—",
+      href: "/applications",
+      hint: "All roles emailed so far",
+      style: KPI_STYLES.applied,
+    },
   ] as const;
 
   return (
@@ -129,39 +146,41 @@ export default function DashboardPage() {
       </header>
 
       {error && (
-        <div className="surface rounded-2xl border-[color:#fecaca] px-4 py-3 text-sm text-[var(--danger)]">
+        <div className="surface break-words rounded-2xl border-[color:#fecaca] px-4 py-3 text-sm text-[var(--danger)]">
           API error: {error}
         </div>
       )}
 
-      <section className="grid gap-4 xl:grid-cols-[1.55fr_0.9fr]">
-        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-3">
-          {cards.map((card) => (
-            <Link
-              key={card.key}
-              href={card.href}
-              className="kpi-card rounded-2xl p-4 transition hover:-translate-y-0.5"
-              style={{
-                background: `linear-gradient(160deg, ${card.style.soft}, #ffffff 58%)`,
-                border: `1px solid ${card.style.border}`,
-                boxShadow: "var(--shadow)",
-              }}
-            >
-              <p
-                className="text-xs font-semibold uppercase tracking-wide"
-                style={{ color: card.style.accent }}
+      {loading ? (
+        <SoftLoader label="Loading dashboard" />
+      ) : (
+        <section className="grid gap-4 xl:grid-cols-[1.55fr_0.9fr]">
+          <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-3">
+            {cards.map((card) => (
+              <Link
+                key={card.key}
+                href={card.href}
+                className="kpi-card rounded-2xl p-4 transition hover:-translate-y-0.5"
+                style={{
+                  background: `linear-gradient(165deg, ${card.style.soft} 0%, rgba(255,255,255,0.92) 62%)`,
+                  border: `1px solid ${card.style.border}`,
+                  boxShadow: "0 10px 28px rgba(15, 118, 110, 0.05)",
+                }}
               >
-                {card.label}
-              </p>
-              <p className="mt-2 text-3xl font-semibold" style={{ color: card.style.accent }}>
-                {card.value}
-              </p>
-              <p className="mt-2 text-sm text-[var(--text-muted)]">{card.hint}</p>
-            </Link>
-          ))}
-        </div>
-        <NextSendTimer initial={nextSend} />
-      </section>
+                <p
+                  className="text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: card.style.accent, opacity: 0.88 }}
+                >
+                  {card.label}
+                </p>
+                <p className="mt-2 text-3xl font-semibold text-[#0b3b3a]">{card.value}</p>
+                <p className="mt-2 text-sm text-[var(--text-muted)]">{card.hint}</p>
+              </Link>
+            ))}
+          </div>
+          <NextSendTimer initial={nextSend} />
+        </section>
+      )}
 
       <section>
         <AnalyticsChart series={series} range={range} onRangeChange={setRange} />
@@ -186,8 +205,8 @@ export default function DashboardPage() {
               key={item.key}
               className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-soft)] px-4 py-3"
             >
-              <div>
-                <p className="font-semibold text-[#0b3b3a]">{item.title}</p>
+              <div className="min-w-0">
+                <p className="break-words font-semibold text-[#0b3b3a]">{item.title}</p>
                 <p className="mt-0.5 text-sm text-[var(--text-muted)]">
                   {item.created_at ? new Date(item.created_at).toLocaleString() : "—"}
                 </p>

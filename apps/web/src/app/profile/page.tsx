@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { SoftLoader } from "@/components/SoftLoader";
 import { api, Profile } from "@/lib/api";
 
 export default function ProfilePage() {
@@ -76,7 +77,7 @@ export default function ProfilePage() {
   }
 
   if (!profile && !error) {
-    return <p className="text-[var(--text-muted)]">Loading profile…</p>;
+    return <SoftLoader label="Loading profile" />;
   }
 
   return (

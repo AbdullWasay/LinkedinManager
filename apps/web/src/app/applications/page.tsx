@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { SoftLoader } from "@/components/SoftLoader";
 import { api, ApplicationItem } from "@/lib/api";
 
 const VIEWS = [
@@ -112,53 +113,63 @@ export default function ApplicationsPage() {
       )}
 
       <p className="text-sm text-[var(--text-muted)]">
-        {loading ? "Loading…" : `${filtered.length} sent item${filtered.length === 1 ? "" : "s"}`}
+        {loading
+          ? ""
+          : `${filtered.length} sent item${filtered.length === 1 ? "" : "s"}`}
       </p>
 
+      {loading && <SoftLoader compact label="Loading applications" />}
+
       <div className="space-y-3">
-        {filtered.map((item) => {
-          const isCold =
-            item.opportunity_type === "cold_website" || item.job_source === "cold_website";
-          return (
-            <article key={item.id} className="surface rounded-2xl p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="mb-2 flex flex-wrap gap-2">
-                    {stageChip(item)}
-                    {isCold && <span className="chip chip-info">Cold website</span>}
-                    {item.match_score != null && (
-                      <span className="chip">{Math.round(item.match_score)}% match</span>
+        {!loading &&
+          filtered.map((item) => {
+            const isCold =
+              item.opportunity_type === "cold_website" || item.job_source === "cold_website";
+            return (
+              <article key={item.id} className="surface overflow-hidden rounded-2xl p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {stageChip(item)}
+                      {isCold && <span className="chip chip-info">Cold website</span>}
+                      {item.match_score != null && (
+                        <span className="chip">{Math.round(item.match_score)}% match</span>
+                      )}
+                    </div>
+                    <h3 className="break-words text-xl text-[#0b3b3a]">
+                      {item.company_name || item.job_title || "Untitled"}
+                    </h3>
+                    <p className="mt-1 break-words text-[var(--text-muted)]">
+                      {item.job_title || "Outreach"}
+                      {item.job_location ? ` · ${item.job_location}` : ""}
+                    </p>
+                    {(item.contact_name || item.contact_email) && (
+                      <p className="mt-2 break-all text-sm text-[var(--text-muted)]">
+                        Sent to: {[item.contact_name, item.contact_email].filter(Boolean).join(" · ")}
+                      </p>
                     )}
                   </div>
-                  <h3 className="text-xl text-[#0b3b3a]">
-                    {item.company_name || item.job_title || "Untitled"}
-                  </h3>
-                  <p className="mt-1 text-[var(--text-muted)]">
-                    {item.job_title || "Outreach"}
-                    {item.job_location ? ` · ${item.job_location}` : ""}
-                  </p>
-                  {(item.contact_name || item.contact_email) && (
-                    <p className="mt-2 text-sm text-[var(--text-muted)]">
-                      Sent to: {[item.contact_name, item.contact_email].filter(Boolean).join(" · ")}
-                    </p>
+                  <div className="text-right text-sm text-[var(--text-muted)]">
+                    Sent
+                    <br />
+                    {item.updated_at ? new Date(item.updated_at).toLocaleString() : "—"}
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {item.source_url && (
+                    <a
+                      className="btn btn-primary"
+                      href={item.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open source
+                    </a>
                   )}
                 </div>
-                <div className="text-right text-sm text-[var(--text-muted)]">
-                  Sent
-                  <br />
-                  {item.updated_at ? new Date(item.updated_at).toLocaleString() : "—"}
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {item.source_url && (
-                  <a className="btn btn-primary" href={item.source_url} target="_blank" rel="noreferrer">
-                    Open source
-                  </a>
-                )}
-              </div>
-            </article>
-          );
-        })}
+              </article>
+            );
+          })}
         {!loading && filtered.length === 0 && (
           <div className="surface rounded-2xl p-5 text-[var(--text-muted)]">
             No sent emails yet. After Gmail sends, they appear here under <strong>Sent</strong>.

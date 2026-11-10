@@ -112,8 +112,8 @@ export default function ColdOutreachPage() {
               {lead.business_type && <span className="chip">{lead.business_type}</span>}
               {lead.status && <span className="chip">{lead.status}</span>}
             </div>
-            <h4 className="text-lg text-[#0b3b3a]">{lead.company_name || lead.title}</h4>
-            <p className="mt-1 text-sm text-[var(--text-muted)]">
+            <h4 className="break-words text-lg text-[#0b3b3a]">{lead.company_name || lead.title}</h4>
+            <p className="mt-1 break-all text-sm text-[var(--text-muted)]">
               {[lead.location, lead.apply_email].filter(Boolean).join(" · ") || "—"}
             </p>
             {lead.source_url && (

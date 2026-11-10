@@ -12,7 +12,18 @@ from app.db.seed import ensure_default_user
 from app.db.session import get_db
 from app.integrations.job_sources.founder_hiring import FounderHiringAdapter
 from app.services.discovery import _profile_dict, ingest_discovered_job
+from app.services.email_extract import _clean, extract_emails
 from app.services.outreach import create_draft_for_job
+
+
+def _display_email(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    cleaned = _clean(raw)
+    if cleaned and "@" in cleaned and "." in cleaned.split("@", 1)[-1]:
+        return cleaned
+    found = extract_emails(raw)
+    return found[0] if found else None
 
 router = APIRouter(prefix="/linkedin-leads", tags=["linkedin-leads"])
 
@@ -113,7 +124,7 @@ def list_leads(db: Session = Depends(get_db), user_id: UUID = Depends(get_curren
                 "title": j.title,
                 "company_name": companies.get(j.company_id) if j.company_id else None,
                 "source_url": j.source_url,
-                "apply_email": j.apply_email,
+                "apply_email": _display_email(j.apply_email),
                 "posted_at": j.posted_at.isoformat() if j.posted_at else None,
                 "match_score": j.match_score,
                 "status": j.status,

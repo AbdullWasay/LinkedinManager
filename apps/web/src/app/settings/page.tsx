@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { SoftLoader } from "@/components/SoftLoader";
 import { api, AuthStatus, Settings } from "@/lib/api";
 
 export default function SettingsPage() {
@@ -64,7 +65,7 @@ export default function SettingsPage() {
     }
   }
 
-  if (!settings && !error) return <p className="text-[var(--text-muted)]">Loading settings…</p>;
+  if (!settings && !error) return <SoftLoader label="Loading settings" />;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
