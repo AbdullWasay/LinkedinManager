@@ -12,11 +12,46 @@ from app.services.working_hours import next_working_window
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
+FOUNDER_LEAD_SOURCES = ("founder_hiring", "linkedin_poster", "startup_outreach")
+
+
 @router.get("/overview")
 def overview(db: Session = Depends(get_db), user_id=Depends(get_current_user_id)) -> dict:
     jobs_discovered = (
         db.query(func.count(Job.id))
         .filter(Job.user_id == user_id, Job.is_deleted.is_(False))
+        .scalar()
+        or 0
+    )
+    cold_businesses_found = (
+        db.query(func.count(Job.id))
+        .filter(
+            Job.user_id == user_id,
+            Job.is_deleted.is_(False),
+            Job.source == "cold_website",
+        )
+        .scalar()
+        or 0
+    )
+    job_openings_found = (
+        db.query(func.count(Job.id))
+        .filter(
+            Job.user_id == user_id,
+            Job.is_deleted.is_(False),
+            Job.source != "cold_website",
+            Job.source.notin_(list(FOUNDER_LEAD_SOURCES)),
+            Job.opportunity_type != "cold_website",
+        )
+        .scalar()
+        or 0
+    )
+    linkedin_leads_found = (
+        db.query(func.count(Job.id))
+        .filter(
+            Job.user_id == user_id,
+            Job.is_deleted.is_(False),
+            Job.source.in_(list(FOUNDER_LEAD_SOURCES)),
+        )
         .scalar()
         or 0
     )
@@ -34,6 +69,17 @@ def overview(db: Session = Depends(get_db), user_id=Depends(get_current_user_id)
     emails_sent = (
         db.query(func.count(EmailMessage.id))
         .filter(EmailMessage.user_id == user_id, EmailMessage.direction == "outbound")
+        .scalar()
+        or 0
+    )
+    day_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    emails_sent_today = (
+        db.query(func.count(EmailMessage.id))
+        .filter(
+            EmailMessage.user_id == user_id,
+            EmailMessage.direction == "outbound",
+            EmailMessage.created_at >= day_start,
+        )
         .scalar()
         or 0
     )
@@ -91,6 +137,10 @@ def overview(db: Session = Depends(get_db), user_id=Depends(get_current_user_id)
     next_send = next_working_window()
     return {
         "jobs_discovered": jobs_discovered,
+        "cold_businesses_found": cold_businesses_found,
+        "job_openings_found": job_openings_found,
+        "linkedin_leads_found": linkedin_leads_found,
+        "emails_sent_today": emails_sent_today,
         "avg_match_score": float(avg_match) if avg_match is not None else 0,
         "pending_approvals": pending_approvals,
         "emails_sent": emails_sent,
@@ -317,6 +367,15 @@ def activity_summary(
     return {"items": buckets[:limit]}
 
 
+def _seconds_until_next_hourly_send(now: datetime | None = None) -> int:
+    """GitHub Actions send job runs hourly at :15 UTC."""
+    now = now or datetime.now(timezone.utc)
+    candidate = now.replace(minute=15, second=0, microsecond=0)
+    if candidate <= now:
+        candidate = candidate + timedelta(hours=1)
+    return max(0, int((candidate - now).total_seconds()))
+
+
 @router.get("/next-send")
 def next_send(db: Session = Depends(get_db), user_id=Depends(get_current_user_id)) -> dict:
     window = next_working_window()
@@ -350,8 +409,17 @@ def next_send(db: Session = Depends(get_db), user_id=Depends(get_current_user_id
     ready = sum(1 for d in approved if d.id not in sent_draft_ids)
     remaining_today = max(0, daily_limit - sent_today)
     next_batch = min(ready, remaining_today)
+    # Always expose a concrete countdown: next working window, or next :15 send if already open.
+    if window.get("any_open_now"):
+        seconds = _seconds_until_next_hourly_send()
+        message = f"{next_batch} email{'s' if next_batch != 1 else ''} will be sent in"
+    else:
+        seconds = int(window.get("seconds_until_start") or 0)
+        message = f"{next_batch} email{'s' if next_batch != 1 else ''} will be sent in"
     return {
         **window,
+        "seconds_until_start": seconds,
+        "message": message,
         "emails_ready": ready,
         "emails_in_next_batch": next_batch,
         "daily_send_limit": daily_limit,

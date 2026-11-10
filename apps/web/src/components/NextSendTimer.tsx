@@ -35,14 +35,16 @@ export function NextSendTimer({ initial }: { initial: NextSend | null }) {
   }, [initial]);
 
   useEffect(() => {
-    if (info?.any_open_now) return;
     const id = setInterval(() => setSeconds((v) => Math.max(0, v - 1)), 1000);
     return () => clearInterval(id);
-  }, [info?.any_open_now]);
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => {
-      fetch(`${(process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "")}/api/v1/analytics/next-send`, { credentials: "include" })
+      fetch(
+        `${(process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "")}/api/v1/analytics/next-send`,
+        { credentials: "include" }
+      )
         .then((r) => r.json())
         .then((data) => {
           setInfo(data);
@@ -59,22 +61,28 @@ export function NextSendTimer({ initial }: { initial: NextSend | null }) {
   const sentToday = info?.sent_today ?? 0;
 
   return (
-    <article className="surface rounded-2xl p-5">
-      <p className="text-sm font-semibold text-[var(--accent)]">Next email batch</p>
-      <p className="mt-2 text-3xl font-semibold text-[#0b3b3a]">
-        {info?.any_open_now ? "Sending window open" : formatCountdown(seconds)}
-      </p>
-      <p className="mt-3 text-2xl font-semibold text-[#0b3b3a]">
-        {batchCount} email{batchCount === 1 ? "" : "s"} in next batch
-      </p>
-      <p className="mt-2 text-sm text-[var(--text-muted)]">
-        {info?.message || "Calculating working-hours window…"}
-      </p>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">
-        {ready} ready · {sentToday}
-        {limit != null ? `/${limit}` : ""} sent today
-        {limit != null ? ` · room for ${info?.remaining_today ?? 0} more` : ""}
-      </p>
+    <article className="surface relative overflow-hidden rounded-2xl p-5">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-90"
+        style={{
+          background:
+            "linear-gradient(145deg, rgba(30,58,138,0.10) 0%, rgba(194,65,12,0.08) 55%, transparent 80%)",
+        }}
+      />
+      <div className="relative">
+        <p className="text-sm font-semibold text-[#1e3a8a]">Next send</p>
+        <p className="mt-3 text-2xl font-semibold leading-snug text-[#0b3b3a]">
+          {batchCount} email{batchCount === 1 ? "" : "s"} will be sent in
+        </p>
+        <p className="mt-2 font-mono text-4xl font-semibold tracking-tight text-[#1e3a8a]">
+          {formatCountdown(seconds)}
+        </p>
+        <p className="mt-3 text-sm text-[var(--text-muted)]">
+          {ready} ready · {sentToday}
+          {limit != null ? `/${limit}` : ""} sent today
+          {limit != null ? ` · room for ${info?.remaining_today ?? 0} more` : ""}
+        </p>
+      </div>
     </article>
   );
 }

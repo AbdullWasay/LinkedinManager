@@ -92,6 +92,10 @@ export type SessionUser = {
 
 export type AnalyticsOverview = {
   jobs_discovered: number;
+  cold_businesses_found?: number;
+  job_openings_found?: number;
+  linkedin_leads_found?: number;
+  emails_sent_today?: number;
   avg_match_score: number;
   pending_approvals: number;
   emails_sent: number;
