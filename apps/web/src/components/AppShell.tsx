@@ -23,7 +23,7 @@ const NAV = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/ready-to-send", label: "Ready to send", icon: Mail },
   { href: "/jobs", label: "Jobs", icon: Briefcase },
-  { href: "/linkedin", label: "LinkedIn leads", icon: Megaphone },
+  { href: "/linkedin", label: "Founder leads", icon: Megaphone },
   { href: "/cold-outreach", label: "Cold websites", icon: Store },
   { href: "/applications", label: "Applied", icon: CheckCircle2 },
   { href: "/cvs", label: "CVs", icon: FileText },

@@ -1,23 +1,22 @@
-"""LinkedIn job-poster outreach leads.
+"""LinkedIn leads page uses automated founder/hiring research.
 
-LinkedIn blocks unauthenticated scraping, so leads are added manually (or via
-your own research): paste the job post URL + the poster's reachable email.
-These are treated as authentic email outreach opportunities.
+LinkedIn blocks unauthenticated scraping, so discovery pulls public founder /
+startup hiring posts that already list an email (HN Who is hiring, YC pages,
+startup boards). Manual paste is disabled.
 """
 
 from __future__ import annotations
 
 from app.integrations.job_sources.base import DiscoveredJob
+from app.integrations.job_sources.founder_hiring import FounderHiringAdapter
 
-# Seed examples stay empty — real leads come from POST /linkedin-leads.
 LINKEDIN_POSTER_LEADS: list[DiscoveredJob] = []
 
 
-class LinkedInPosterAdapter:
-    name = "linkedin_poster"
+class LinkedInPosterAdapter(FounderHiringAdapter):
+    """Alias used by discovery — fetches founder_hiring leads automatically."""
 
-    def fetch(self) -> list[DiscoveredJob]:
-        return list(LINKEDIN_POSTER_LEADS)
+    name = "founder_hiring"
 
 
 def lead_to_discovered(
@@ -31,17 +30,18 @@ def lead_to_discovered(
     notes: str | None = None,
     email_status: str = "listed",
 ) -> DiscoveredJob:
+    """Legacy helper kept for any leftover callers."""
     email = poster_email.strip().lower()
     name = (poster_name or "").strip()
     company = (company_name or "").strip() or None
     desc = (
-        f"LinkedIn job post outreach. Role: {title}. "
-        f"Poster: {name}. Company: {company or 'n/a'}. "
-        f"{notes or 'Approach the person who posted the role directly.'}"
+        f"Founder / hiring outreach. Role: {title}. "
+        f"Contact: {name}. Company: {company or 'n/a'}. "
+        f"{notes or 'Approach the person hiring directly.'}"
     )
     return DiscoveredJob(
         title=title.strip(),
-        source="linkedin_poster",
+        source="founder_hiring",
         source_url=job_url.strip(),
         company_name=company,
         description=desc,
@@ -54,11 +54,11 @@ def lead_to_discovered(
             "application_mode": "email",
             "apply_email": email,
             "contact_name": name,
-            "contact_role": "Recruiter / job poster",
+            "contact_role": "Founder / hiring",
             "email_status": email_status,
-            "outreach_type": "linkedin_poster",
+            "outreach_type": "founder",
             "poster_linkedin": poster_linkedin,
-            "posted_at": None,  # filled by API as now
-            "source_channel": "linkedin",
+            "posted_at": None,
+            "source_channel": "manual_legacy",
         },
     )
