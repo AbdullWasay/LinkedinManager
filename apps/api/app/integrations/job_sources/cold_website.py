@@ -458,8 +458,17 @@ class ColdWebsiteAdapter:
     def fetch(self) -> list[DiscoveredJob]:
         jobs: list[DiscoveredJob] = []
         seen: set[str] = set()
-        with httpx.Client(timeout=30.0, follow_redirects=True) as client:
-            for lead in _nominatim_leads(client, limit=24) + _directory_leads(client, limit=16):
+        with httpx.Client(timeout=20.0, follow_redirects=True) as client:
+            batches: list[DiscoveredJob] = []
+            for label, loader in (
+                ("nominatim", lambda: _nominatim_leads(client, limit=24)),
+                ("directories", lambda: _directory_leads(client, limit=16)),
+            ):
+                try:
+                    batches.extend(loader())
+                except Exception as exc:
+                    logger.warning("Cold website %s research failed: %s", label, exc)
+            for lead in batches:
                 email = str((lead.raw_payload or {}).get("apply_email") or "")
                 if not email or email in seen:
                     continue
