@@ -21,6 +21,14 @@
   --overlay: rgba(11, 59, 58, 0.42);
   --input-bg: #ffffff;
   --kpi-wash: rgba(204, 251, 241, 0.55);
+  --chart-email: #0f766e;
+  --chart-jobs: #475569;
+  --chart-grid: #d7e8e5;
+  --chart-axis: #456664;
+  --tooltip-bg: #0b3b3a;
+  --tooltip-muted: #cde8e4;
+  --tooltip-email: #99f6e4;
+  --tooltip-jobs: #e2e8f0;
   --font: "Poppins", "Segoe UI", sans-serif;
   --body-bg:
     radial-gradient(900px 420px at 0% 0%, rgba(13, 148, 136, 0.12), transparent 55%),
@@ -50,6 +58,14 @@ html.dark {
   --overlay: rgba(0, 0, 0, 0.55);
   --input-bg: #0f1919;
   --kpi-wash: rgba(45, 212, 191, 0.1);
+  --chart-email: #2dd4bf;
+  --chart-jobs: #94a3b8;
+  --chart-grid: #2a3c3b;
+  --chart-axis: #9bb5b2;
+  --tooltip-bg: #041010;
+  --tooltip-muted: #b6d4d0;
+  --tooltip-email: #5eead4;
+  --tooltip-jobs: #f1f5f9;
   --body-bg:
     radial-gradient(900px 420px at 0% 0%, rgba(45, 212, 191, 0.08), transparent 55%),
     radial-gradient(700px 380px at 100% 0%, rgba(14, 165, 233, 0.06), transparent 50%),

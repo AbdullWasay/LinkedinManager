@@ -16,10 +16,8 @@ const RANGES = [
   { key: "30d", label: "Last 30 days" },
 ] as const;
 
-const EMAIL_COLOR = "#0f766e";
-const EMAIL_LABEL = "#99f6e4";
-const JOBS_COLOR = "#334155";
-const JOBS_LABEL = "#cbd5e1";
+const EMAIL_COLOR = "var(--chart-email)";
+const JOBS_COLOR = "var(--chart-jobs)";
 
 export function AnalyticsChart({
   series,
@@ -74,7 +72,7 @@ export function AnalyticsChart({
           <h3 className="text-lg text-[var(--heading)]">Outreach activity</h3>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
             <span style={{ color: EMAIL_COLOR }}>Emails sent {emailTotal}</span>
-            <span className="mx-2 text-[#9bb5b2]">·</span>
+            <span className="mx-2 text-[var(--text-muted)]">·</span>
             <span style={{ color: JOBS_COLOR }}>Jobs found {jobsTotal}</span>
           </p>
         </div>
@@ -118,8 +116,8 @@ export function AnalyticsChart({
               const y = height - padY - t * (height - padY * 2);
               return (
                 <g key={t}>
-                  <line x1={padX} x2={width - padX} y1={y} y2={y} stroke="#d7e8e5" strokeWidth="1" />
-                  <text x={10} y={y + 4} fontSize="11" fill="#456664" fontFamily="Poppins, sans-serif">
+                  <line x1={padX} x2={width - padX} y1={y} y2={y} stroke="var(--chart-grid)" strokeWidth="1" />
+                  <text x={10} y={y + 4} fontSize="11" fill="var(--chart-axis)" fontFamily="Poppins, sans-serif">
                     {Math.round(max * t)}
                   </text>
                 </g>
@@ -148,7 +146,7 @@ export function AnalyticsChart({
                   cy={p.emailY}
                   r={hoverIndex === i ? 6 : p.emails > 0 ? 4.5 : 2.5}
                   fill={EMAIL_COLOR}
-                  stroke="#fff"
+                  stroke="var(--bg-elevated)"
                   strokeWidth={hoverIndex === i ? 2 : 0}
                 />
                 <circle
@@ -156,7 +154,7 @@ export function AnalyticsChart({
                   cy={p.jobsY}
                   r={hoverIndex === i ? 6 : p.jobs > 0 ? 4.5 : 2.5}
                   fill={JOBS_COLOR}
-                  stroke="#fff"
+                  stroke="var(--bg-elevated)"
                   strokeWidth={hoverIndex === i ? 2 : 0}
                 />
                 {(i === 0 || i === points.length - 1 || i % Math.ceil(points.length / 7) === 0) && (
@@ -165,7 +163,7 @@ export function AnalyticsChart({
                     y={height - 8}
                     textAnchor="middle"
                     fontSize="11"
-                    fill="#456664"
+                    fill="var(--chart-axis)"
                     fontFamily="Poppins, sans-serif"
                   >
                     {p.label}
@@ -193,12 +191,20 @@ export function AnalyticsChart({
                   const boxY = Math.max(8, tipY - boxH - 12);
                   return (
                     <>
-                      <rect x={boxX} y={boxY} width={boxW} height={boxH} rx={12} fill="var(--heading)" opacity="0.96" />
+                      <rect
+                        x={boxX}
+                        y={boxY}
+                        width={boxW}
+                        height={boxH}
+                        rx={12}
+                        fill="var(--tooltip-bg)"
+                        opacity="0.98"
+                      />
                       <text
                         x={boxX + 14}
                         y={boxY + 20}
                         fontSize="11"
-                        fill="#cde8e4"
+                        fill="var(--tooltip-muted)"
                         fontFamily="Poppins, sans-serif"
                       >
                         {hovered.label}
@@ -208,7 +214,7 @@ export function AnalyticsChart({
                         y={boxY + 40}
                         fontSize="12"
                         fontWeight="600"
-                        fill={EMAIL_LABEL}
+                        fill="var(--tooltip-email)"
                         fontFamily="Poppins, sans-serif"
                       >
                         {hovered.emails} emails sent
@@ -218,7 +224,7 @@ export function AnalyticsChart({
                         y={boxY + 56}
                         fontSize="12"
                         fontWeight="600"
-                        fill={JOBS_LABEL}
+                        fill="var(--tooltip-jobs)"
                         fontFamily="Poppins, sans-serif"
                       >
                         {hovered.jobs} jobs found
