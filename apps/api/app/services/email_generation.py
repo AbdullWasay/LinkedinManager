@@ -12,6 +12,10 @@ Rules:
 - No fluff, no fake achievements.
 - Include LinkedIn and portfolio links exactly as provided.
 - Do not invent employers, dates, or projects not in the profile.
+- NEVER say the candidate is based in the US, lives in the US, or is a US citizen.
+- Do not invent any home location. Prefer remote/international framing without naming a city unless the profile explicitly provides one.
+- If the role requires US citizenship / work authorization / no sponsorship, still apply and briefly note openness to relocating to the US for a sponsored role.
+- If work_auth.mention_sponsorship_relocation is true, include one short sentence about being open to moving to the US with visa sponsorship.
 - If a resume will be attached, mention that briefly (e.g. "I've attached my CV").
 - Return JSON with keys: subject, body.
 - Body should be plain text with line breaks.
@@ -30,6 +34,49 @@ Rules:
 """
 
 
+def _job_text(job: dict[str, Any]) -> str:
+    return " ".join(
+        str(job.get(k) or "")
+        for k in ("title", "company_name", "description", "location", "salary_range")
+    ).lower()
+
+
+def _work_auth_context(job: dict[str, Any], profile: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Detect US citizenship / authorization asks and how to phrase relocation."""
+    text = _job_text(job)
+    citizen_markers = (
+        "us citizen",
+        "u.s. citizen",
+        "u.s.citizens",
+        "united states citizen",
+        "must be a citizen",
+        "citizens only",
+        "citizenship required",
+        "green card",
+        "permanent resident",
+        "authorized to work in the us",
+        "authorized to work in the united states",
+        "work authorization in the us",
+        "without sponsorship",
+        "no sponsorship",
+        "visa sponsorship not available",
+        "cannot sponsor",
+        "unable to sponsor",
+        "must already be authorized",
+    )
+    needs_mention = any(m in text for m in citizen_markers)
+    prefs = (profile or {}).get("extra") or {}
+    relocation_line = prefs.get("sponsorship_relocation_line") or (
+        "I'm open to relocating to the US for a sponsored role."
+    )
+    return {
+        "requires_us_work_auth_language": needs_mention,
+        "mention_sponsorship_relocation": needs_mention,
+        "never_claim_us_based": True,
+        "relocation_line": relocation_line if needs_mention else None,
+    }
+
+
 def _fallback_email(
     profile: dict[str, Any],
     job: dict[str, Any],
@@ -46,6 +93,12 @@ def _fallback_email(
     portfolio = profile.get("portfolio_url") or ""
     skills = (profile.get("professional_background") or {}).get("skills") or []
     skill_line = ", ".join(skills[:6])
+    auth = _work_auth_context(job, profile)
+    relocation = (
+        f"{auth['relocation_line']}\n\n"
+        if auth.get("mention_sponsorship_relocation") and auth.get("relocation_line")
+        else ""
+    )
     cv_line = (
         f"I've attached my {resume_name or 'CV'} for convenience.\n\n"
         if attach_resume
@@ -58,6 +111,7 @@ def _fallback_email(
         f"production work I've been doing across {skill_line}.\n\n"
         f"I've shipped marketplace and production platforms (including BlueOcean and Gemelli Marketplace) "
         f"and I'm especially interested in early-stage product work where I can own features end to end.\n\n"
+        f"{relocation}"
         f"Portfolio: {portfolio}\n"
         f"LinkedIn: {linkedin}\n\n"
         f"{cv_line}"
@@ -126,6 +180,7 @@ def generate_outreach_email(
             profile, job, contact, resume_name=resume_name, attach_resume=attach_resume
         )
 
+    work_auth = _work_auth_context(job, profile)
     user_prompt = {
         "candidate": {
             "full_name": profile.get("full_name"),
@@ -134,6 +189,9 @@ def generate_outreach_email(
             "education": profile.get("education"),
             "professional_background": profile.get("professional_background"),
             "projects": profile.get("projects"),
+            "location_policy": (
+                "Never claim based in the US. Open to relocating to the US for sponsored roles."
+            ),
         },
         "job": {
             "title": job.get("title"),
@@ -148,6 +206,7 @@ def generate_outreach_email(
             "role_title": contact.get("role_title"),
             "email": contact.get("email"),
         },
+        "work_auth": work_auth,
         "resume": {
             "will_attach": attach_resume,
             "name": resume_name,
@@ -162,6 +221,30 @@ def generate_outreach_email(
             return _fallback_email(
                 profile, job, contact, resume_name=resume_name, attach_resume=attach_resume
             )
+        # Hard guard: strip invented US-based claims the model sometimes adds.
+        banned = (
+            "based in the us",
+            "based in the u.s",
+            "based in america",
+            "i'm based in us",
+            "i am based in the us",
+            "living in the us",
+            "located in the us",
+            "us-based engineer",
+            "us based engineer",
+        )
+        low = body.lower()
+        if any(b in low for b in banned):
+            return _fallback_email(
+                profile, job, contact, resume_name=resume_name, attach_resume=attach_resume
+            )
+        if (
+            work_auth.get("mention_sponsorship_relocation")
+            and work_auth.get("relocation_line")
+            and "relocat" not in body.lower()
+            and "sponsor" not in body.lower()
+        ):
+            body += f"\n\n{work_auth['relocation_line']}"
         linkedin = profile.get("linkedin_url") or ""
         portfolio = profile.get("portfolio_url") or ""
         if linkedin and linkedin not in body:

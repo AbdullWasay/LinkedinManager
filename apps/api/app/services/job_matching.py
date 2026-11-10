@@ -136,9 +136,27 @@ def score_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
         concerns.append("Experience bar may be high (senior/5+ years)")
     if "german" in blob and "c2" in blob:
         concerns.append("Requires native/C2 German")
+    us_auth = any(
+        m in blob
+        for m in (
+            "us citizen",
+            "u.s. citizen",
+            "united states citizen",
+            "without sponsorship",
+            "no sponsorship",
+            "green card",
+            "authorized to work in the us",
+            "authorized to work in the united states",
+        )
+    )
+    if us_auth:
+        # Still apply — outreach should mention open to US relocation with sponsorship.
+        concerns.append("US work auth / citizenship language — mention sponsorship + relocation")
 
     strengths = matched_skills[:8] or (["Title aligns with target roles"] if title_hit else [])
     action = "apply" if total >= 70 and is_remote else ("review" if total >= 55 else "skip")
+    if us_auth and action == "skip" and total >= 55 and is_remote:
+        action = "apply"
 
     return {
         "match_score": round(total, 1),

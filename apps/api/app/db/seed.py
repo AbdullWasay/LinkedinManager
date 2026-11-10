@@ -76,7 +76,16 @@ DEFAULT_PROFILE = {
         "_prefs": {
             "remote_only": True,
             "preferred_currencies": ["USD", "AED", "GBP", "EUR"],
-            "notes": "Remote-only international roles. Prefer pay in USD, AED, GBP, or EUR.",
+            "notes": (
+                "Remote-only international roles. Prefer pay in USD, AED, GBP, or EUR. "
+                "Never claim based in the US. If a role asks for US citizenship / work auth, "
+                "still apply and say open to relocating to the US for a sponsored role."
+            ),
+            "never_claim_us_based": True,
+            "open_to_us_relocation_with_sponsorship": True,
+            "sponsorship_relocation_line": (
+                "I'm open to relocating to the US for a sponsored role."
+            ),
         }
     },
     "employment_types": ["full-time", "remote-contract", "freelance", "part-time"],
@@ -250,6 +259,25 @@ def ensure_default_user(db: Session) -> User:
         profile = UserProfile(user_id=user.id, **DEFAULT_PROFILE)
         db.add(profile)
         logger.info("Seeded user profile for %s", user.name)
+    else:
+        # Keep location / sponsorship guidance current without wiping custom profile edits.
+        prefs = dict((user.profile.salary_expectations or {}).get("_prefs") or {})
+        default_prefs = dict((DEFAULT_PROFILE.get("salary_expectations") or {}).get("_prefs") or {})
+        changed = False
+        for key in (
+            "never_claim_us_based",
+            "open_to_us_relocation_with_sponsorship",
+            "sponsorship_relocation_line",
+            "notes",
+        ):
+            if key in default_prefs and prefs.get(key) != default_prefs[key]:
+                prefs[key] = default_prefs[key]
+                changed = True
+        if changed:
+            salary = dict(user.profile.salary_expectations or {})
+            salary["_prefs"] = prefs
+            user.profile.salary_expectations = salary
+            logger.info("Updated location/sponsorship prefs for %s", user.email)
 
     if user.settings is None:
         db.add(UserSettings(user_id=user.id))
