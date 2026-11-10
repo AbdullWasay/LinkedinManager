@@ -94,7 +94,15 @@ HIRING_LOCAL_HINTS = (
 
 def _clean(email: str) -> str:
     # Strip trailing junk that shows up in scraped mailto / HTML entities.
-    return email.strip().strip(".,);]>\"'\\/").lower()
+    e = (email or "").strip().lower()
+    e = e.replace("&quot;", "").replace("&lt;", "").replace("&gt;", "").replace("&#39;", "")
+    e = e.split("?", 1)[0].split("&", 1)[0]
+    # Drop accidental HTML/JSON tails glued onto scraped addresses.
+    if "@" in e:
+        local, _, domain = e.partition("@")
+        domain = re.split(r"[^a-z0-9.-]", domain, maxsplit=1)[0]
+        e = f"{local}@{domain}"
+    return e.strip(".,);]>\"'\\/")
 
 
 def is_noise_email(email: str) -> bool:

@@ -128,15 +128,28 @@ def approve_draft(draft_id: str, db: Session = Depends(get_db), user_id=Depends(
 
 @router.post("/drafts/{draft_id}/send")
 def send_one(draft_id: str, db: Session = Depends(get_db), user_id=Depends(get_current_user_id)) -> dict:
+    from app.db.models import UserSettings
+    from app.services.outreach import _sent_today
+
     draft = db.query(EmailDraft).filter(EmailDraft.id == draft_id, EmailDraft.user_id == user_id).one_or_none()
     if draft is None:
         raise HTTPException(status_code=404, detail="Draft not found")
+    settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).one_or_none()
+    daily_limit = (settings.daily_send_limit if settings else None) or 30
+    if _sent_today(db, user_id) >= daily_limit:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Daily send limit reached ({daily_limit}). More emails go out tomorrow.",
+        )
     if draft.approval_status != "approved":
         draft.approval_status = "approved"
         db.commit()
     try:
-        return send_draft(db, user_id, draft)
+        result = send_draft(db, user_id, draft)
+        db.commit()
+        return result
     except Exception as exc:
+        db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
