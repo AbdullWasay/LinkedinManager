@@ -75,12 +75,6 @@ export function NextSendTimer({ initial }: { initial: NextSend | null }) {
         {limit != null ? `/${limit}` : ""} sent today
         {limit != null ? ` · room for ${info?.remaining_today ?? 0} more` : ""}
       </p>
-      {info?.timezone && (
-        <p className="mt-1 text-sm text-[var(--text-muted)]">
-          Timezone focus: {info.timezone}
-          {info.local_window ? ` · ${info.local_window}` : ""}
-        </p>
-      )}
     </article>
   );
 }

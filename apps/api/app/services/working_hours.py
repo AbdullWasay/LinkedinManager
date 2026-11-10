@@ -131,13 +131,13 @@ def next_working_window(
         chosen = sorted(open_now, key=lambda c: c["ends_at"])[0]
         return {
             **chosen,
-            "message": f"Sending window open now ({chosen['timezone']})",
+            "message": "Sending window is open now",
             "any_open_now": True,
         }
 
     chosen = sorted(candidates, key=lambda c: c["seconds_until_start"])[0]
     return {
         **chosen,
-        "message": f"Next send window: {chosen['timezone']} {chosen['local_window']}",
+        "message": f"Next send window opens in the countdown above ({chosen['local_window']})",
         "any_open_now": False,
     }

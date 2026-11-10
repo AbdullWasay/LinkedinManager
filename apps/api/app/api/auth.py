@@ -13,7 +13,6 @@ from app.db.seed import ensure_default_user
 from app.db.session import get_db
 from app.integrations.google import drive as drive_integration
 from app.integrations.google import oauth as google_oauth
-from app.integrations.google import sheets as sheets_integration
 from app.schemas.auth import AuthStatusResponse, LoginResponse, SessionUserResponse
 from app.services.session_auth import (
     auth_is_required,
@@ -181,9 +180,8 @@ def google_callback(code: str, state: str, db: Session = Depends(get_db)) -> Red
             if profile.get("name"):
                 user.name = profile["name"]
             db.commit()
-        sheets_integration.ensure_spreadsheet(db, user.id)
+        # Sheets are optional/disabled — only ensure Drive so CVs can attach.
         drive_integration.ensure_resume_folder(db, user.id)
-        sheets_integration.push_all(db, user.id)
     except HTTPException:
         raise
     except Exception as exc:

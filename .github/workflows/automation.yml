@@ -11,7 +11,7 @@ on:
     - cron: "0 21 * * *"
     # Send approved drafts hourly at :15
     - cron: "15 * * * *"
-    # Sheets + Gmail sync
+    # Gmail reconcile
     - cron: "*/30 * * * *"
   workflow_dispatch:
     inputs:
@@ -22,7 +22,6 @@ on:
         options:
           - discovery
           - send
-          - sheets-sync
           - gmail-reconcile
           - all
 
@@ -52,12 +51,12 @@ jobs:
           else
             case "${{ github.event.schedule }}" in
               "15 * * * *") JOB="send" ;;
-              "*/30 * * * *") JOB="sheets-sync gmail-reconcile" ;;
+              "*/30 * * * *") JOB="gmail-reconcile" ;;
               *) JOB="discovery" ;;
             esac
           fi
           if [ "$JOB" = "all" ]; then
-            JOB="discovery send sheets-sync gmail-reconcile"
+            JOB="discovery send gmail-reconcile"
           fi
           echo "list=$JOB" >> "$GITHUB_OUTPUT"
 

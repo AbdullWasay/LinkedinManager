@@ -29,7 +29,6 @@ export default function SettingsPage() {
       const updated = await api.updateSettings({
         auto_send_enabled: settings.auto_send_enabled,
         discovery_interval_hours: settings.discovery_interval_hours,
-        sheets_sync_interval_minutes: settings.sheets_sync_interval_minutes,
         daily_send_limit: settings.daily_send_limit,
         follow_up_days: settings.follow_up_days,
       });
@@ -149,18 +148,6 @@ export default function SettingsPage() {
                 value={settings.discovery_interval_hours}
                 onChange={(e) =>
                   setSettings({ ...settings, discovery_interval_hours: Number(e.target.value) })
-                }
-              />
-            </div>
-            <div>
-              <label className="label">Sheets sync interval (minutes)</label>
-              <input
-                className="input"
-                type="number"
-                min={1}
-                value={settings.sheets_sync_interval_minutes}
-                onChange={(e) =>
-                  setSettings({ ...settings, sheets_sync_interval_minutes: Number(e.target.value) })
                 }
               />
             </div>

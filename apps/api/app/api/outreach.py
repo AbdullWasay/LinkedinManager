@@ -15,7 +15,7 @@ def run_outreach(
     discover: bool = True,
     max_send: int = Query(default=30, ge=0, le=100),
     force_auto_send: bool = False,
-    sync_sheets: bool = True,
+    sync_sheets: bool = False,
     db: Session = Depends(get_db),
     user_id=Depends(get_current_user_id),
 ) -> dict:
@@ -29,6 +29,7 @@ def run_outreach(
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
+    # Google Sheets sync is disabled by default (not used).
     if sync_sheets:
         try:
             sheets_integration.push_all(db, user_id)

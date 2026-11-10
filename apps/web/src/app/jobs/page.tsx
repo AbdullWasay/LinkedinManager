@@ -113,7 +113,7 @@ export default function JobsPage() {
     setError(null);
     setMessage(null);
     try {
-      const res = await fetch(`${API_URL}/api/v1/jobs/discover?min_score=55&sync_sheets=true`, { credentials: "include", 
+      const res = await fetch(`${API_URL}/api/v1/jobs/discover?min_score=55&sync_sheets=false`, { credentials: "include", 
         method: "POST",
       });
       if (!res.ok) throw new Error(await res.text());

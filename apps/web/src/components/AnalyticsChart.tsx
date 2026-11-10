@@ -16,8 +16,11 @@ const RANGES = [
   { key: "30d", label: "Last 30 days" },
 ] as const;
 
-const EMAIL_COLOR = "#0f766e";
-const JOBS_COLOR = "#b45309";
+// High-contrast on the light teal dashboard: navy + amber (not teal-on-teal).
+const EMAIL_COLOR = "#1e3a8a";
+const EMAIL_LABEL = "#93c5fd";
+const JOBS_COLOR = "#c2410c";
+const JOBS_LABEL = "#fdba74";
 
 export function AnalyticsChart({
   series,
@@ -206,7 +209,7 @@ export function AnalyticsChart({
                         y={boxY + 40}
                         fontSize="12"
                         fontWeight="600"
-                        fill={EMAIL_COLOR}
+                        fill={EMAIL_LABEL}
                         fontFamily="Poppins, sans-serif"
                       >
                         {hovered.emails} emails sent
@@ -216,7 +219,7 @@ export function AnalyticsChart({
                         y={boxY + 56}
                         fontSize="12"
                         fontWeight="600"
-                        fill="#fbbf24"
+                        fill={JOBS_LABEL}
                         fontFamily="Poppins, sans-serif"
                       >
                         {hovered.jobs} jobs found

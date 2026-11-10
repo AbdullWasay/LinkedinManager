@@ -278,7 +278,7 @@ def reclassify_application_modes(
 
 @router.post("/discover", response_model=DiscoveryRunResponse)
 def discover_jobs(
-    sync_sheets: bool = True,
+    sync_sheets: bool = False,
     min_score: float = Query(default=55.0, ge=0, le=100),
     db: Session = Depends(get_db),
     user_id: UUID = Depends(get_current_user_id),
@@ -288,11 +288,11 @@ def discover_jobs(
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Discovery failed: {exc}") from exc
 
+    # Sheets sync disabled by default — app no longer depends on Google Sheets.
     if sync_sheets:
         try:
             sheets_integration.push_all(db, user_id)
         except Exception as exc:
-            # Don't fail discovery if sheets sync fails; surface as error entry.
             result["errors"].append({"source": "sheets_sync", "error": str(exc)})
 
     return DiscoveryRunResponse(**result)
