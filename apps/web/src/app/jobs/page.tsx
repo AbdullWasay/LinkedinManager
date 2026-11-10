@@ -23,6 +23,7 @@ type Job = {
   manual_apply_required?: boolean;
   manual_apply_status?: string;
   posted_at?: string | null;
+  discovered_at?: string | null;
   match_details?: {
     relevant_strengths?: string[];
     potential_concerns?: string[];
@@ -307,6 +308,9 @@ export default function JobsPage() {
                 {job.salary_range && <span className="break-words">Pay: {job.salary_range}</span>}
                 <span>{job.is_remote ? "Remote" : "Not remote"}</span>
                 {email && <span className="break-all">Email: {email}</span>}
+                {job.discovered_at && (
+                  <span>Found: {new Date(job.discovered_at).toLocaleString()}</span>
+                )}
               </div>
 
               {job.match_details?.application?.detection_reason && (
