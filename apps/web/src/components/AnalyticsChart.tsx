@@ -16,11 +16,10 @@ const RANGES = [
   { key: "30d", label: "Last 30 days" },
 ] as const;
 
-// High-contrast on the light teal dashboard: navy + amber (not teal-on-teal).
-const EMAIL_COLOR = "#1e3a8a";
-const EMAIL_LABEL = "#93c5fd";
-const JOBS_COLOR = "#c2410c";
-const JOBS_LABEL = "#fdba74";
+const EMAIL_COLOR = "#0f766e";
+const EMAIL_LABEL = "#99f6e4";
+const JOBS_COLOR = "#334155";
+const JOBS_LABEL = "#cbd5e1";
 
 export function AnalyticsChart({
   series,

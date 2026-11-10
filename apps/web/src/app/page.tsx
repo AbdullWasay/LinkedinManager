@@ -13,39 +13,6 @@ import { AnalyticsChart } from "@/components/AnalyticsChart";
 import { NextSendTimer } from "@/components/NextSendTimer";
 import { SoftLoader } from "@/components/SoftLoader";
 
-const KPI_STYLES = {
-  cold: {
-    accent: "#0f766e",
-    soft: "rgba(167, 243, 208, 0.45)",
-    border: "rgba(110, 231, 183, 0.55)",
-  },
-  openings: {
-    accent: "#b45309",
-    soft: "rgba(254, 215, 170, 0.5)",
-    border: "rgba(253, 186, 116, 0.55)",
-  },
-  linkedin: {
-    accent: "#1d4ed8",
-    soft: "rgba(191, 219, 254, 0.55)",
-    border: "rgba(147, 197, 253, 0.6)",
-  },
-  sent: {
-    accent: "#6d28d9",
-    soft: "rgba(221, 214, 254, 0.55)",
-    border: "rgba(196, 181, 253, 0.6)",
-  },
-  ready: {
-    accent: "#047857",
-    soft: "rgba(167, 243, 208, 0.4)",
-    border: "rgba(110, 231, 183, 0.5)",
-  },
-  applied: {
-    accent: "#9f1239",
-    soft: "rgba(254, 205, 211, 0.5)",
-    border: "rgba(253, 164, 175, 0.55)",
-  },
-} as const;
-
 export default function DashboardPage() {
   const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
   const [series, setSeries] = useState<DailyPoint[]>([]);
@@ -81,7 +48,6 @@ export default function DashboardPage() {
       value: analytics?.cold_businesses_found ?? "—",
       href: "/cold-outreach",
       hint: "Local businesses researched for website outreach",
-      style: KPI_STYLES.cold,
     },
     {
       key: "openings",
@@ -89,7 +55,6 @@ export default function DashboardPage() {
       value: analytics?.job_openings_found ?? "—",
       href: "/jobs",
       hint: "Companies with roles discovered for applications",
-      style: KPI_STYLES.openings,
     },
     {
       key: "linkedin",
@@ -97,7 +62,6 @@ export default function DashboardPage() {
       value: analytics?.linkedin_leads_found ?? "—",
       href: "/linkedin",
       hint: "Founders & hiring leads researched for cold email",
-      style: KPI_STYLES.linkedin,
     },
     {
       key: "sent",
@@ -105,7 +69,6 @@ export default function DashboardPage() {
       value: analytics?.emails_sent_today ?? "—",
       href: "/applications",
       hint: "Outbound emails delivered since midnight UTC",
-      style: KPI_STYLES.sent,
     },
     {
       key: "ready",
@@ -113,7 +76,6 @@ export default function DashboardPage() {
       value: analytics?.emails_ready_to_send ?? "—",
       href: "/ready-to-send",
       hint: "Approved drafts waiting in the send queue",
-      style: KPI_STYLES.ready,
     },
     {
       key: "applied",
@@ -121,7 +83,6 @@ export default function DashboardPage() {
       value: analytics?.applications_sent ?? "—",
       href: "/applications",
       hint: "All roles emailed so far",
-      style: KPI_STYLES.applied,
     },
   ] as const;
 
@@ -160,17 +121,9 @@ export default function DashboardPage() {
               <Link
                 key={card.key}
                 href={card.href}
-                className="kpi-card rounded-2xl p-4 transition hover:-translate-y-0.5"
-                style={{
-                  background: `linear-gradient(165deg, ${card.style.soft} 0%, rgba(255,255,255,0.92) 62%)`,
-                  border: `1px solid ${card.style.border}`,
-                  boxShadow: "0 10px 28px rgba(15, 118, 110, 0.05)",
-                }}
+                className="kpi-card surface rounded-2xl p-4 transition hover:-translate-y-0.5"
               >
-                <p
-                  className="text-xs font-semibold uppercase tracking-wide"
-                  style={{ color: card.style.accent, opacity: 0.88 }}
-                >
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
                   {card.label}
                 </p>
                 <p className="mt-2 text-3xl font-semibold text-[#0b3b3a]">{card.value}</p>

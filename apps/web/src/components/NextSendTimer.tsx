@@ -61,28 +61,19 @@ export function NextSendTimer({ initial }: { initial: NextSend | null }) {
   const sentToday = info?.sent_today ?? 0;
 
   return (
-    <article className="surface relative overflow-hidden rounded-2xl p-5">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-90"
-        style={{
-          background:
-            "linear-gradient(145deg, rgba(30,58,138,0.10) 0%, rgba(194,65,12,0.08) 55%, transparent 80%)",
-        }}
-      />
-      <div className="relative">
-        <p className="text-sm font-semibold text-[#1e3a8a]">Next send</p>
-        <p className="mt-3 text-xl font-semibold leading-snug text-[#0b3b3a] sm:text-2xl">
-          {batchCount} email{batchCount === 1 ? "" : "s"} will be sent in
-        </p>
-        <p className="mt-2 font-mono text-3xl font-semibold tracking-tight text-[#1e3a8a] sm:text-4xl">
-          {formatCountdown(seconds)}
-        </p>
-        <p className="mt-3 text-sm text-[var(--text-muted)]">
-          {ready} ready · {sentToday}
-          {limit != null ? `/${limit}` : ""} sent today
-          {limit != null ? ` · room for ${info?.remaining_today ?? 0} more` : ""}
-        </p>
-      </div>
+    <article className="surface rounded-2xl p-5">
+      <p className="text-sm font-semibold text-[var(--text-muted)]">Next send</p>
+      <p className="mt-3 text-xl font-semibold leading-snug text-[#0b3b3a] sm:text-2xl">
+        {batchCount} email{batchCount === 1 ? "" : "s"} will be sent in
+      </p>
+      <p className="mt-2 font-mono text-3xl font-semibold tracking-tight text-[#0b3b3a] sm:text-4xl">
+        {formatCountdown(seconds)}
+      </p>
+      <p className="mt-3 text-sm text-[var(--text-muted)]">
+        {ready} ready · {sentToday}
+        {limit != null ? `/${limit}` : ""} sent today
+        {limit != null ? ` · room for ${info?.remaining_today ?? 0} more` : ""}
+      </p>
     </article>
   );
 }

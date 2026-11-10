@@ -214,12 +214,12 @@ h3,
 }
 
 .kpi-card {
-  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+  transition: transform 140ms ease, box-shadow 140ms ease;
 }
 
 .kpi-card:hover {
-  transform: translateY(-2px);
-  filter: saturate(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(15, 41, 40, 0.06);
 }
 
 .range-pill {
