@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 import mimetypes
+import os
+import tempfile
 from pathlib import Path
 from typing import Any, Optional
 from uuid import UUID
@@ -17,7 +19,24 @@ from app.services.resume_matching import extract_drive_file_id
 logger = logging.getLogger(__name__)
 
 RESUME_FOLDER_NAME = "AI Job Hunter - Resumes"
-CV_CACHE_DIR = Path(__file__).resolve().parents[3] / "data" / "cv_cache"
+
+
+def _cv_cache_dir() -> Path:
+    """Prefer repo data/ on writable hosts; fall back to /tmp on Vercel."""
+    preferred = Path(__file__).resolve().parents[3] / "data" / "cv_cache"
+    try:
+        preferred.mkdir(parents=True, exist_ok=True)
+        probe = preferred / ".write_test"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        return preferred
+    except OSError:
+        fallback = Path(os.environ.get("TMPDIR") or tempfile.gettempdir()) / "ai_job_hunter_cv_cache"
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback
+
+
+CV_CACHE_DIR = _cv_cache_dir()
 
 
 def _drive_service(db: Session, user_id: UUID):
@@ -121,10 +140,10 @@ def download_file(
     name = preferred_name or meta.get("name") or f"{file_id}.pdf"
     mime = meta.get("mimeType") or ""
 
-    CV_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_dir = _cv_cache_dir()
     if dest_path is None:
         safe = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in name)
-        dest = CV_CACHE_DIR / f"{file_id}_{safe}"
+        dest = cache_dir / f"{file_id}_{safe}"
     else:
         dest = Path(dest_path)
         dest.parent.mkdir(parents=True, exist_ok=True)

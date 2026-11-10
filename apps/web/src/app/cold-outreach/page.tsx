@@ -130,8 +130,11 @@ export default function ColdOutreachPage() {
         ))}
         {items.length === 0 && (
           <div className="surface rounded-2xl p-5 text-[var(--text-muted)]">
-            No cold website leads yet. Click “Find businesses now” or wait for the next scheduled
-            discovery run.
+            No open cold leads right now. Already-emailed businesses move to{" "}
+            <Link href="/applications" className="font-semibold underline">
+              Applied
+            </Link>
+            . Click “Find businesses now” to research a fresh batch.
           </div>
         )}
       </section>

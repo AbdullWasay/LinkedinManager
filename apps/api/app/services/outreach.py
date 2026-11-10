@@ -503,6 +503,21 @@ def run_daily_outreach(
     db.commit()
 
     if auto_send and remaining > 0:
+        # Promote pending drafts with real (non-guessed) contacts into the send queue.
+        pending = (
+            db.query(EmailDraft)
+            .filter(
+                EmailDraft.user_id == user.id,
+                EmailDraft.approval_status == "pending",
+            )
+            .all()
+        )
+        for draft in pending:
+            contact = db.query(Contact).filter(Contact.id == draft.contact_id).one_or_none()
+            if contact and contact.email and contact.email_status != "guessed":
+                draft.approval_status = "approved"
+        db.commit()
+
         approved = (
             db.query(EmailDraft)
             .filter(
@@ -541,7 +556,12 @@ def run_daily_outreach(
                 continue
 
             try:
-                send_draft(db, user.id, draft)
+                # Re-load after possible prior rollbacks so the instance is attached.
+                live = db.query(EmailDraft).filter(EmailDraft.id == draft.id).one_or_none()
+                if live is None:
+                    continue
+                send_draft(db, user.id, live)
+                db.commit()
                 result["emails_sent"] += 1
                 remaining -= 1
             except Exception as exc:

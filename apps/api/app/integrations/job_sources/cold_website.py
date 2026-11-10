@@ -41,6 +41,10 @@ SEARCH_TARGETS: list[dict[str, str]] = [
     {"market": "UK", "city": "Edinburgh"},
     {"market": "UK", "city": "Glasgow"},
     {"market": "UK", "city": "Cardiff"},
+    {"market": "UK", "city": "Brighton"},
+    {"market": "UK", "city": "Newcastle"},
+    {"market": "UK", "city": "Leicester"},
+    {"market": "UK", "city": "Coventry"},
     {"market": "US", "city": "Austin"},
     {"market": "US", "city": "Denver"},
     {"market": "US", "city": "Portland"},
@@ -49,6 +53,10 @@ SEARCH_TARGETS: list[dict[str, str]] = [
     {"market": "US", "city": "Charlotte"},
     {"market": "US", "city": "Columbus"},
     {"market": "US", "city": "Milwaukee"},
+    {"market": "US", "city": "Kansas City"},
+    {"market": "US", "city": "Oklahoma City"},
+    {"market": "US", "city": "Salt Lake City"},
+    {"market": "US", "city": "Raleigh"},
 ]
 
 TRADE_QUERIES = [
@@ -74,6 +82,9 @@ DIRECTORY_SOURCES: list[dict[str, str]] = [
     {"market": "UK", "city": "Manchester", "url": "https://www.visitmanchester.com/shopping"},
     {"market": "UK", "city": "Birmingham", "url": "https://visitbirmingham.com/food-and-drink"},
     {"market": "UK", "city": "Bristol", "url": "https://www.visitbristol.co.uk/food-and-drink"},
+    {"market": "UK", "city": "Liverpool", "url": "https://www.visitliverpool.com/food-and-drink"},
+    {"market": "UK", "city": "Leeds", "url": "https://www.visitleeds.co.uk/food-and-drink"},
+    {"market": "UK", "city": "Edinburgh", "url": "https://edinburgh.org/food-drink/"},
 ]
 
 SOCIAL_HOST_HINTS = (
@@ -378,7 +389,7 @@ def _directory_leads(client: httpx.Client, *, limit: int = 10) -> list[Discovere
     day = int(time.strftime("%j"))
     sources = DIRECTORY_SOURCES[day % len(DIRECTORY_SOURCES) :] + DIRECTORY_SOURCES[: day % len(DIRECTORY_SOURCES)]
 
-    for source in sources[:3]:
+    for source in sources[:5]:
         market = source["market"]
         city = source["city"]
         try:
@@ -394,7 +405,7 @@ def _directory_leads(client: httpx.Client, *, limit: int = 10) -> list[Discovere
             logger.exception("Directory fetch failed %s", source["url"])
             continue
 
-        for listing_url in listing_urls[:18]:
+        for listing_url in listing_urls[:24]:
             try:
                 resp = client.get(listing_url, headers=BROWSER_HEADERS, timeout=20.0)
                 time.sleep(0.2)
@@ -448,7 +459,7 @@ class ColdWebsiteAdapter:
         jobs: list[DiscoveredJob] = []
         seen: set[str] = set()
         with httpx.Client(timeout=30.0, follow_redirects=True) as client:
-            for lead in _nominatim_leads(client, limit=18) + _directory_leads(client, limit=8):
+            for lead in _nominatim_leads(client, limit=24) + _directory_leads(client, limit=16):
                 email = str((lead.raw_payload or {}).get("apply_email") or "")
                 if not email or email in seen:
                     continue

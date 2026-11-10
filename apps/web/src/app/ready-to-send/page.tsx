@@ -60,8 +60,8 @@ export default function ReadyToSendPage() {
           <p className="text-sm font-semibold text-[var(--accent)]">Outreach queue</p>
           <h2 className="mt-1 text-3xl">Ready to send</h2>
           <p className="mt-2 max-w-2xl text-[var(--text-muted)]">
-            Approved emails waiting for the next working-hours window. This is different from the email
-            outreach job pool on Jobs.
+            Approved emails waiting to go out (auto-send uses working hours and your daily limit).
+            Job vacancies need a CV attached from Drive; cold website offers send without a CV.
           </p>
         </div>
         <Link href="/" className="btn btn-secondary">
