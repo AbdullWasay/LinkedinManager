@@ -4,6 +4,28 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api, SessionUser } from "@/lib/api";
 
+function BootLoader() {
+  return (
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-6">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(720px 360px at 50% 20%, rgba(13,148,136,0.16), transparent 60%), linear-gradient(180deg, #f8fcfb 0%, #eef8f6 100%)",
+        }}
+      />
+      <div className="relative flex w-full max-w-sm flex-col items-center text-center">
+        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+          AI Job Hunter
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold text-[#0b3b3a]">Abdul Wasay</h1>
+        <div className="boot-spinner mt-8 h-10 w-10" aria-hidden />
+        <span className="sr-only">Loading</span>
+      </div>
+    </div>
+  );
+}
+
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -42,11 +64,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!ready) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] text-[var(--text-muted)]">
-        Checking login…
-      </div>
-    );
+    return <BootLoader />;
   }
 
   if (user?.auth_required && !user.authenticated) {
