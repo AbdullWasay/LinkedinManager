@@ -71,10 +71,10 @@ export function NextSendTimer({ initial }: { initial: NextSend | null }) {
       />
       <div className="relative">
         <p className="text-sm font-semibold text-[#1e3a8a]">Next send</p>
-        <p className="mt-3 text-2xl font-semibold leading-snug text-[#0b3b3a]">
+        <p className="mt-3 text-xl font-semibold leading-snug text-[#0b3b3a] sm:text-2xl">
           {batchCount} email{batchCount === 1 ? "" : "s"} will be sent in
         </p>
-        <p className="mt-2 font-mono text-4xl font-semibold tracking-tight text-[#1e3a8a]">
+        <p className="mt-2 font-mono text-3xl font-semibold tracking-tight text-[#1e3a8a] sm:text-4xl">
           {formatCountdown(seconds)}
         </p>
         <p className="mt-3 text-sm text-[var(--text-muted)]">

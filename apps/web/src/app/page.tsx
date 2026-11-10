@@ -111,18 +111,18 @@ export default function DashboardPage() {
   return (
     <div className="space-y-7">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-[var(--accent)]">Overview</p>
-          <h2 className="mt-1 text-3xl">Dashboard</h2>
-          <p className="mt-2 max-w-2xl text-[var(--text-muted)]">
+          <h2 className="mt-1 text-2xl sm:text-3xl">Dashboard</h2>
+          <p className="mt-2 max-w-2xl text-sm text-[var(--text-muted)] sm:text-base">
             Cold businesses, job openings, founder leads, and today’s send queue.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/ready-to-send" className="btn btn-primary">
+          <Link href="/ready-to-send" className="btn btn-primary flex-1 sm:flex-none">
             Ready to send
           </Link>
-          <Link href="/applications" className="btn btn-secondary">
+          <Link href="/applications" className="btn btn-secondary flex-1 sm:flex-none">
             Applied
           </Link>
         </div>
@@ -135,7 +135,7 @@ export default function DashboardPage() {
       )}
 
       <section className="grid gap-4 xl:grid-cols-[1.55fr_0.9fr]">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-3">
           {cards.map((card) => (
             <Link
               key={card.key}

@@ -239,3 +239,25 @@ h3,
   border-color: var(--accent);
   color: #fff;
 }
+
+.app-sidebar {
+  scrollbar-width: thin;
+}
+
+@media (max-width: 1023px) {
+  h2 {
+    font-size: 1.55rem;
+  }
+
+  .kpi-card p.text-3xl {
+    font-size: 1.7rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-card,
+  .btn,
+  .nav-link {
+    transition: none !important;
+  }
+}
