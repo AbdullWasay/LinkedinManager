@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { SoftLoader } from "@/components/SoftLoader";
+import { displayEmail } from "@/lib/display";
 
 type Job = {
   id: string;
@@ -45,6 +47,7 @@ export default function JobsPage() {
   const [minScore, setMinScore] = useState<ScoreFilter>("any");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,7 +84,10 @@ export default function JobsPage() {
     const scoreParam = params.get("min_score");
     const nextScore: ScoreFilter = scoreParam === "70" || scoreParam === "55" ? scoreParam : "any";
     setMinScore(nextScore);
-    load({ minScore: nextScore }).catch((err: Error) => setError(err.message));
+    setLoading(true);
+    load({ minScore: nextScore })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -187,7 +193,14 @@ export default function JobsPage() {
             Ready to send
           </Link>
           <button className="btn btn-primary" disabled={busy} onClick={discover}>
-            {busy ? "Working…" : "Discover jobs now"}
+            {busy ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="boot-spinner h-4 w-4" aria-hidden />
+                Working
+              </span>
+            ) : (
+              "Discover jobs now"
+            )}
           </button>
         </div>
       </header>
@@ -239,13 +252,17 @@ export default function JobsPage() {
         Showing {filtered.length} of {total} jobs
       </p>
 
+      {loading && <SoftLoader compact label="Loading jobs" />}
+
       <div className="space-y-3">
-        {filtered.map((job) => {
+        {!loading &&
+          filtered.map((job) => {
           const sourceLink = job.source_url || job.apply_url;
           const isEmail = job.application_mode === "email" || !job.manual_apply_required;
+          const email = displayEmail(job.apply_email);
 
           return (
-            <article key={job.id} className="surface rounded-2xl p-5">
+            <article key={job.id} className="surface overflow-hidden rounded-2xl p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex flex-wrap gap-2">
@@ -258,8 +275,8 @@ export default function JobsPage() {
                       <span className="chip chip-warn">Guessed email — not auto-sent</span>
                     )}
                   </div>
-                  <h3 className="text-xl text-[#0b3b3a]">{job.title}</h3>
-                  <p className="mt-1 text-[var(--text-muted)]">
+                  <h3 className="break-words text-xl text-[#0b3b3a]">{job.title}</h3>
+                  <p className="mt-1 break-words text-[var(--text-muted)]">
                     {job.company_name || "Unknown company"} · {job.location || "Remote"} · {job.source}
                   </p>
                   {sourceLink && (
@@ -276,22 +293,24 @@ export default function JobsPage() {
                     </p>
                   )}
                 </div>
-                <div className="text-right">
-                  <div className="text-3xl font-semibold text-[#0b3b3a]">
-                    {job.match_score != null ? `${job.match_score}%` : "—"}
+                <div className="shrink-0 rounded-2xl bg-[var(--accent-soft)] px-3 py-2 text-right">
+                  <div className="text-2xl font-semibold text-[var(--accent)]">
+                    {job.match_score != null ? `${Math.round(job.match_score)}%` : "—"}
                   </div>
-                  <div className="text-sm text-[var(--text-muted)]">match</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
+                    match
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--text-muted)]">
-                {job.salary_range && <span>Pay: {job.salary_range}</span>}
+              <div className="mt-3 flex flex-col gap-1 text-sm text-[var(--text-muted)] sm:flex-row sm:flex-wrap sm:gap-3">
+                {job.salary_range && <span className="break-words">Pay: {job.salary_range}</span>}
                 <span>{job.is_remote ? "Remote" : "Not remote"}</span>
-                {job.apply_email && <span>Email: {job.apply_email}</span>}
+                {email && <span className="break-all">Email: {email}</span>}
               </div>
 
               {job.match_details?.application?.detection_reason && (
-                <p className="mt-2 text-sm text-[var(--text-muted)]">
+                <p className="mt-2 break-words text-sm text-[var(--text-muted)]">
                   Why: {job.match_details.application.detection_reason}
                 </p>
               )}
@@ -324,7 +343,7 @@ export default function JobsPage() {
             </article>
           );
         })}
-        {filtered.length === 0 && !error && (
+        {!loading && filtered.length === 0 && !error && (
           <div className="surface rounded-2xl p-5 text-[var(--text-muted)]">No jobs match these filters.</div>
         )}
       </div>

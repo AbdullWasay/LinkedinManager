@@ -61,12 +61,18 @@ export function NextSendTimer({ initial }: { initial: NextSend | null }) {
   const sentToday = info?.sent_today ?? 0;
 
   return (
-    <article className="surface rounded-2xl p-5">
-      <p className="text-sm font-semibold text-[var(--text-muted)]">Next send</p>
+    <article
+      className="rounded-2xl border border-[var(--border)] p-5"
+      style={{
+        background: "linear-gradient(160deg, rgba(204,251,241,0.45) 0%, #ffffff 60%)",
+        boxShadow: "var(--shadow)",
+      }}
+    >
+      <p className="text-sm font-semibold text-[var(--accent)]">Next send</p>
       <p className="mt-3 text-xl font-semibold leading-snug text-[#0b3b3a] sm:text-2xl">
         {batchCount} email{batchCount === 1 ? "" : "s"} will be sent in
       </p>
-      <p className="mt-2 font-mono text-3xl font-semibold tracking-tight text-[#0b3b3a] sm:text-4xl">
+      <p className="mt-2 font-mono text-3xl font-semibold tracking-tight text-[var(--accent)] sm:text-4xl">
         {formatCountdown(seconds)}
       </p>
       <p className="mt-3 text-sm text-[var(--text-muted)]">

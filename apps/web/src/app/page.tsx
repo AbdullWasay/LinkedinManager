@@ -121,12 +121,17 @@ export default function DashboardPage() {
               <Link
                 key={card.key}
                 href={card.href}
-                className="kpi-card surface rounded-2xl p-4 transition hover:-translate-y-0.5"
+                className="kpi-card rounded-2xl border border-[var(--border)] p-4 transition hover:-translate-y-0.5"
+                style={{
+                  background:
+                    "linear-gradient(160deg, rgba(204,251,241,0.55) 0%, #ffffff 58%)",
+                  boxShadow: "var(--shadow)",
+                }}
               >
-                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--accent)]">
                   {card.label}
                 </p>
-                <p className="mt-2 text-3xl font-semibold text-[#0b3b3a]">{card.value}</p>
+                <p className="mt-2 text-3xl font-semibold text-[var(--accent)]">{card.value}</p>
                 <p className="mt-2 text-sm text-[var(--text-muted)]">{card.hint}</p>
               </Link>
             ))}

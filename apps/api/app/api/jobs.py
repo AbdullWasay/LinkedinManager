@@ -53,6 +53,18 @@ def _merge_apply_meta(job: Job, apply_meta: dict) -> None:
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 
+def _clean_apply_email(raw: Optional[str]) -> Optional[str]:
+    if not raw:
+        return None
+    from app.services.email_extract import _clean, extract_emails
+
+    cleaned = _clean(raw)
+    if cleaned and "@" in cleaned and "." in cleaned.split("@", 1)[-1]:
+        return cleaned
+    found = extract_emails(raw)
+    return found[0] if found else None
+
+
 def _to_response(job: Job, company_name: Optional[str] = None) -> JobResponse:
     return JobResponse(
         id=job.id,
@@ -69,7 +81,7 @@ def _to_response(job: Job, company_name: Optional[str] = None) -> JobResponse:
         opportunity_type=job.opportunity_type,
         application_mode=job.application_mode,
         apply_url=job.apply_url,
-        apply_email=job.apply_email,
+        apply_email=_clean_apply_email(job.apply_email),
         manual_apply_required=job.manual_apply_required,
         manual_apply_status=job.manual_apply_status,
         status=job.status,
