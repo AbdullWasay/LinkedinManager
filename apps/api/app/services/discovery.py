@@ -195,6 +195,7 @@ def ingest_discovered_job(
         posted_at=posted_at or datetime.now(timezone.utc),
     )
     db.add(job)
+    db.flush()  # ensure job.id exists before draft/application creation
     return job
 
 

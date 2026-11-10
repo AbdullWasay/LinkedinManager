@@ -166,6 +166,8 @@ def create_draft_for_job(
     apply_meta = (job.match_details or {}).get("application") or {}
     if not job.apply_email and not apply_meta.get("apply_email"):
         return None
+    if job.id is None:
+        db.flush()
 
     contact = upsert_contact_for_job(db, user.id, job, {**apply_meta, "apply_email": job.apply_email})
     if contact is None or not contact.email:

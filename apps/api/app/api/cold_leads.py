@@ -53,8 +53,14 @@ def discover_leads(
                 if draft:
                     drafts += 1
             except Exception as exc:
-                errors.append(f"{job.title}: draft failed — {exc}")
+                db.rollback()
+                user = ensure_default_user(db)
+                profile = _profile_dict(user.profile)
+                errors.append(f"{discovered.title}: draft failed — {exc}")
         except Exception as exc:
+            db.rollback()
+            user = ensure_default_user(db)
+            profile = _profile_dict(user.profile)
             errors.append(str(exc))
     db.commit()
     return {
