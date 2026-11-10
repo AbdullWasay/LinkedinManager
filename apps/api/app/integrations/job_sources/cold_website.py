@@ -286,7 +286,8 @@ def _extract_title(html: str, fallback: str) -> str:
 
 
 def _nominatim_leads(client: httpx.Client, *, limit: int = 20) -> list[DiscoveredJob]:
-    day = int(time.strftime("%j"))
+    # Rotate by day+hour so repeated "Find now" clicks explore different cities/trades.
+    day = int(time.strftime("%j")) + int(time.strftime("%H")) + int(time.strftime("%M")) // 10
     cities = SEARCH_TARGETS[day % len(SEARCH_TARGETS) :] + SEARCH_TARGETS[: day % len(SEARCH_TARGETS)]
     trades = TRADE_QUERIES[day % len(TRADE_QUERIES) :] + TRADE_QUERIES[: day % len(TRADE_QUERIES)]
 

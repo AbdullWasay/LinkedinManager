@@ -63,6 +63,14 @@ FAKE_DOMAINS = {
     "wixpress.com",
     "googleapis.com",
     "schema.org",
+    "placeholder.workatastartup.com",
+}
+
+# Shared inboxes / apply portals that are not a real hiring contact.
+BLOCKED_EXACT_EMAILS = {
+    "workatastartup@ycombinator.com",
+    "jobs@ycombinator.com",
+    "apply@ycombinator.com",
 }
 
 HIRING_LOCAL_HINTS = (
@@ -93,10 +101,12 @@ def is_noise_email(email: str) -> bool:
     e = _clean(email)
     if "@" not in e:
         return True
+    if e in BLOCKED_EXACT_EMAILS:
+        return True
     local, _, domain = e.partition("@")
     if not local or not domain or "." not in domain:
         return True
-    if domain in FAKE_DOMAINS or domain.endswith(".example"):
+    if domain in FAKE_DOMAINS or domain.endswith(".example") or domain.endswith(".workatastartup.com"):
         return True
     if local in NOISE_LOCAL_PARTS:
         return True

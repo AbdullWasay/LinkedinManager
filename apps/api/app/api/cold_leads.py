@@ -33,12 +33,30 @@ def discover_leads(
 
     profile = _profile_dict(user.profile)
 
+    already_emailed = {
+        str(row[0]).strip().lower()
+        for row in db.query(Job.apply_email)
+        .filter(
+            Job.user_id == user_id,
+            Job.source == "cold_website",
+            Job.apply_email.isnot(None),
+            Job.status.in_(["applied", "sent", "rejected", "closed"]),
+        )
+        .all()
+        if row[0]
+    }
+
     fetched = ColdWebsiteAdapter().fetch()
     saved = 0
     drafts = 0
+    skipped_known = 0
     errors: list[str] = []
     for discovered in fetched:
         try:
+            email = str((discovered.raw_payload or {}).get("apply_email") or "").strip().lower()
+            if email and email in already_emailed:
+                skipped_known += 1
+                continue
             discovered.raw_payload = {
                 **(discovered.raw_payload or {}),
                 "posted_at": datetime.now(timezone.utc).isoformat(),
@@ -46,6 +64,10 @@ def discover_leads(
             }
             job = ingest_discovered_job(db, user_id, profile, discovered, min_score=40.0)
             if job is None:
+                continue
+            # Already-emailed / closed leads stay under Applied — don't count as fresh research.
+            if job.status in {"applied", "sent", "rejected", "closed"}:
+                skipped_known += 1
                 continue
             saved += 1
             try:
@@ -67,11 +89,13 @@ def discover_leads(
         "fetched": len(fetched),
         "saved": saved,
         "drafts_created": drafts,
+        "skipped_already_emailed": skipped_known,
         "auto_approved": True,
         "errors": errors[:10],
         "message": (
-            f"Found {len(fetched)} candidates, saved {saved}, queued {drafts} emails. "
-            "They join the automatic send queue when auto-send is on."
+            f"Found {len(fetched)} candidates, saved {saved} new, queued {drafts} emails"
+            + (f", skipped {skipped_known} already emailed" if skipped_known else "")
+            + ". They join the automatic send queue when auto-send is on."
         ),
     }
 
