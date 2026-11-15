@@ -56,6 +56,10 @@ TARGET_TITLE_PATTERNS = [
     r"\bprincipal\s+(software|ml|ai|machine learning)?\s*(system\s+)?engineer\b",
     r"\bsoftware\s+engineering\s+manager\b",
     r"\bsolutions?\s+architect\b",
+    r"\bsoftware\s+architect\b",
+    r"\bcloud\s+(architect|engineer)\b",
+    r"\bsecurity\s+engineer\b",
+    r"\binfrastructure\s+engineer\b",
 ]
 
 # Non-engineering roles that currently pollute discovery.
