@@ -144,7 +144,17 @@ def ingest_discovered_job(
             db.flush()
         return None
 
-    if match["match_score"] < min_score and match["recommended_action"] == "skip":
+    # Never keep non-engineering / irrelevant titles, even if remote + freshness inflate score.
+    if match.get("recommended_action") == "skip" or match.get("role_relevant") is False:
+        if existing and not existing.is_deleted:
+            existing.is_deleted = True
+            existing.status = "rejected"
+            existing.match_score = match.get("match_score")
+            existing.match_details = match
+            existing.version += 1
+            db.flush()
+        return None
+    if match["match_score"] < min_score:
         return None
 
     company = _get_or_create_company(db, user_id, discovered.company_name, discovered.location)

@@ -20,21 +20,77 @@ SKILL_ALIASES = {
     "ai": ["ai", "llm", "openai", "langchain", "genai"],
 }
 
-TARGET_KEYWORDS = [
-    "full-stack",
-    "fullstack",
-    "full stack",
-    "react",
-    "next.js",
-    "nextjs",
-    "node",
-    "nestjs",
-    "nest.js",
-    "python",
-    "fastapi",
-    "typescript",
-    "ai",
-    "llm",
+# Titles we actively want.
+TARGET_TITLE_PATTERNS = [
+    r"\bsoftware\s+(engineer|developer|dev)\b",
+    r"\bfull[\s-]?stack\b",
+    r"\bfront[\s-]?end\b",
+    r"\bback[\s-]?end\b",
+    r"\bweb\s+developer\b",
+    r"\bapplication\s+developer\b",
+    r"\breact\b",
+    r"\bnext\.?js\b",
+    r"\bnode\.?js\b",
+    r"\bnest\.?js\b",
+    r"\btypescript\b",
+    r"\bpython\b",
+    r"\bfastapi\b",
+    r"\bai\s+(engineer|developer|application)\b",
+    r"\bml\s+(system\s+)?engineer\b",
+    r"\bmachine\s+learning\s+(system\s+)?engineer\b",
+    r"\bllm\s+engineer\b",
+    r"\bgenai\b",
+    r"\bfounding\s+engineer\b",
+    r"\bplatform\s+engineer\b",
+    r"\bdevops\b",
+    r"\bsite\s+reliability\b",
+    r"\bsre\b",
+    r"\bmobile\s+(engineer|developer)\b",
+    r"\bios\s+(engineer|developer)\b",
+    r"\bandroid\s+(engineer|developer)\b",
+    r"\bkotlin\b",
+    r"\bforward[\s-]?deployed\s+engineer\b",
+    r"\bdata\s+engineer\b",
+    r"\bdata\s+scientist\b",
+    r"\bstaff\s+engineer\b",
+    r"\bprincipal\s+(software|ml|ai|machine learning)?\s*(system\s+)?engineer\b",
+    r"\bsoftware\s+engineering\s+manager\b",
+    r"\bsolutions?\s+architect\b",
+]
+
+# Non-engineering roles that currently pollute discovery.
+IRRELEVANT_TITLE_PATTERNS = [
+    r"\baccount\s+executive\b",
+    r"\bsales\b",
+    r"\bbusiness\s+development\b",
+    r"\bcommunity\s+(strategy|manager|lead)\b",
+    r"\btalent\s+community\b",
+    r"\bcustomer\s+strategy\b",
+    r"\bcustomer\s+success\b",
+    r"\bcustomer\s+integration\b",
+    r"\bimplementation\s+(manager|consultant|specialist)\b",
+    r"\benterprise\s+implementation\b",
+    r"\bproduct\s+marketing\b",
+    r"\bmarketing\s+manager\b",
+    r"\brevenue\b",
+    r"\bbusiness\s+partner\b",
+    r"\bsolutions\s+analyst\b",
+    r"\bproduct\s+manager\b",
+    r"\bprogram\s+manager\b",
+    r"\brecruiter\b",
+    r"\bpeople\s+ops\b",
+    r"\bhr\b",
+    r"\bdesigner\b",
+    r"\bux\s+writer\b",
+    r"\bcontent\s+(writer|strategist|manager)\b",
+    r"\bsupport\s+(specialist|agent|representative)\b",
+    r"\bcustomer\s+support\b",
+    r"\boperations\s+manager\b",
+    r"\bfinance\b",
+    r"\baccountant\b",
+    r"\blegal\b",
+    r"\bnurse\b",
+    r"\bclinical\b(?!.*\b(engineer|developer|software)\b)",
 ]
 
 
@@ -44,6 +100,67 @@ def _normalize(text: str) -> str:
 
 def _contains_any(haystack: str, needles: list[str]) -> bool:
     return any(n in haystack for n in needles)
+
+
+def _matches_any(text: str, patterns: list[str]) -> bool:
+    return any(re.search(p, text, flags=re.I) for p in patterns)
+
+
+def is_irrelevant_role(title: str, description: str = "") -> bool:
+    title_n = _normalize(title)
+    if not title_n:
+        return True
+    if _matches_any(title_n, IRRELEVANT_TITLE_PATTERNS):
+        return True
+    # Guard: "engineer" alone is not enough if title is clearly customer/sales ops.
+    if _matches_any(title_n, [r"\b(customer|sales|community|marketing|account)\b"]) and not _matches_any(
+        title_n, TARGET_TITLE_PATTERNS
+    ):
+        return True
+    return False
+
+
+def is_target_engineering_role(title: str, description: str = "") -> bool:
+    title_n = _normalize(title)
+    if not title_n:
+        return False
+    if is_irrelevant_role(title_n, description):
+        return False
+    if _matches_any(title_n, TARGET_TITLE_PATTERNS):
+        return True
+    # Allow generic "software/developer/engineer" titles that aren't rejected above.
+    if re.search(r"\b(software|developer|engineer)\b", title_n):
+        # Reject vague "Integration Engineer" / "IT Engineer" without software/AI signal
+        # unless description clearly points to coding stack.
+        desc_n = _normalize(description)[:2500]
+        coding_signal = _contains_any(
+            f"{title_n} {desc_n}",
+            [
+                "react",
+                "next.js",
+                "typescript",
+                "javascript",
+                "node",
+                "python",
+                "fastapi",
+                "django",
+                "flask",
+                "full stack",
+                "fullstack",
+                "backend",
+                "frontend",
+                "api",
+                "llm",
+                "machine learning",
+                "postgresql",
+                "kubernetes",
+                "docker",
+            ],
+        )
+        if "software" in title_n or "developer" in title_n:
+            return True
+        return coding_signal
+    return False
 
 
 def preferred_currency_hit(text: str, currencies: list[str]) -> bool:
@@ -78,6 +195,30 @@ def score_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
     salary = _normalize(str(job.get("salary_range") or ""))
     blob = f"{title} {description} {location} {salary}"
 
+    concerns: list[str] = []
+    relevant = is_target_engineering_role(title, description)
+    irrelevant = is_irrelevant_role(title, description)
+
+    if irrelevant or not relevant:
+        concerns.append("Not a software / full-stack / AI engineering role")
+        return {
+            "match_score": 15.0,
+            "relevant_strengths": [],
+            "missing_requirements": ["software/full-stack/AI engineering title"],
+            "potential_concerns": concerns,
+            "recommended_action": "skip",
+            "role_relevant": False,
+            "breakdown": {
+                "technical_skills": 0.0,
+                "experience": 0.0,
+                "responsibilities": 10.0,
+                "location": 0.0,
+                "remote": 0.0,
+                "employment_type": 0.0,
+                "salary": 0.0,
+            },
+        }
+
     skills = [
         _normalize(s)
         for s in (profile.get("professional_background") or {}).get("skills") or []
@@ -89,14 +230,12 @@ def score_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
         if _contains_any(blob, aliases):
             matched_skills.append(skill)
         else:
-            # Only treat core skills as missing when clearly required in text.
             if any(a in blob for a in aliases):
                 missing_skills.append(skill)
 
     skill_score = min(100.0, (len(matched_skills) / max(8, 1)) * 100.0)
-
-    title_hit = _contains_any(title, TARGET_KEYWORDS)
-    responsibility_score = 85.0 if title_hit else 45.0
+    title_hit = _matches_any(title, TARGET_TITLE_PATTERNS)
+    responsibility_score = 90.0 if title_hit else 70.0
 
     remote_required = bool((profile.get("extra") or {}).get("remote_only", True))
     is_remote = bool(job.get("is_remote")) or "remote" in blob
@@ -115,7 +254,7 @@ def score_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
 
     experience_score = 70.0
     if "senior" in title or "5+" in blob or "5 years" in blob:
-        experience_score = 55.0  # stretch but still possible
+        experience_score = 55.0
     if "junior" in title or "intern" in title:
         experience_score = 40.0
 
@@ -129,7 +268,6 @@ def score_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
         + salary_score * weights.get("salary", 0.05)
     )
 
-    concerns: list[str] = []
     if remote_required and not is_remote:
         concerns.append("Not clearly remote")
     if experience_score < 60:
@@ -150,10 +288,9 @@ def score_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
         )
     )
     if us_auth:
-        # Still apply — outreach should mention open to US relocation with sponsorship.
         concerns.append("US work auth / citizenship language — mention sponsorship + relocation")
 
-    strengths = matched_skills[:8] or (["Title aligns with target roles"] if title_hit else [])
+    strengths = matched_skills[:8] or (["Title aligns with target engineering roles"] if title_hit else [])
     action = "apply" if total >= 70 and is_remote else ("review" if total >= 55 else "skip")
     if us_auth and action == "skip" and total >= 55 and is_remote:
         action = "apply"
@@ -164,6 +301,7 @@ def score_job(job: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
         "missing_requirements": missing_skills[:6],
         "potential_concerns": concerns,
         "recommended_action": action,
+        "role_relevant": True,
         "breakdown": {
             "technical_skills": round(skill_score, 1),
             "experience": round(experience_score, 1),
