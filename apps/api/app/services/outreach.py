@@ -565,9 +565,15 @@ def run_daily_outreach(
                 result["emails_sent"] += 1
                 remaining -= 1
             except Exception as exc:
+                from app.integrations.google.oauth import is_google_auth_failure
+
                 logger.exception("Failed sending draft %s", draft.id)
                 result["errors"].append({"draft_id": str(draft.id), "error": str(exc)})
                 db.rollback()
+                if is_google_auth_failure(exc):
+                    result["skipped"] = True
+                    result["reason"] = "google_token_revoked"
+                    break
 
     log_activity(
         db,

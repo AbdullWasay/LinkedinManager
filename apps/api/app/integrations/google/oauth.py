@@ -24,6 +24,32 @@ class GoogleNotConfiguredError(Exception):
     pass
 
 
+class GoogleAuthError(Exception):
+    """Refresh token missing, expired, or revoked — user must reconnect Google."""
+
+
+def is_google_auth_failure(exc: BaseException) -> bool:
+    """True when Gmail/Drive calls failed because OAuth must be reconnected."""
+    text = str(exc).lower()
+    if "invalid_grant" in text or "token has been expired or revoked" in text:
+        return True
+    if "google token refresh failed" in text or "google account not connected" in text:
+        return True
+    if "google credentials invalid" in text:
+        return True
+    try:
+        from google.auth.exceptions import RefreshError
+
+        if isinstance(exc, RefreshError):
+            return True
+    except Exception:
+        pass
+    if isinstance(exc, HTTPException) and exc.status_code in (401, 403):
+        detail = str(exc.detail).lower()
+        return "google" in detail
+    return False
+
+
 def google_is_configured() -> bool:
     settings = get_settings()
     return bool(settings.google_client_id and settings.google_client_secret)
@@ -159,24 +185,26 @@ def get_valid_credentials(db: Session, user_id: UUID) -> Credentials:
         raise HTTPException(status_code=401, detail="Google account not connected")
 
     creds = credentials_from_row(row)
-    if not creds.valid:
-        if creds.expired and creds.refresh_token:
-            try:
-                creds.refresh(Request())
-            except Exception as exc:
-                logger.exception("Failed to refresh Google token")
-                log_activity(
-                    db,
-                    user_id=user_id,
-                    category="security",
-                    action="google_token_refresh_failed",
-                    message=str(exc),
-                    status="failure",
-                )
-                raise HTTPException(status_code=401, detail="Google token refresh failed") from exc
-            store_credentials(db, user_id, creds)
-        else:
+    # Access tokens expire ~1h; always refresh when expired or near-expiry so Gmail
+    # HTTP clients don't hit invalid_grant mid-request with a stale access token.
+    needs_refresh = (not creds.valid) or bool(creds.expired)
+    if needs_refresh:
+        if not creds.refresh_token:
             raise HTTPException(status_code=401, detail="Google credentials invalid")
+        try:
+            creds.refresh(Request())
+        except Exception as exc:
+            logger.exception("Failed to refresh Google token")
+            log_activity(
+                db,
+                user_id=user_id,
+                category="security",
+                action="google_token_refresh_failed",
+                message=str(exc),
+                status="failure",
+            )
+            raise HTTPException(status_code=401, detail="Google token refresh failed") from exc
+        store_credentials(db, user_id, creds)
     return creds
 
 

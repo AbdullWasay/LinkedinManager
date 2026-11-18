@@ -6,6 +6,7 @@ from app.db.models import UserSettings
 from app.db.seed import get_default_user
 from app.db.session import SessionLocal
 from app.integrations.google import gmail as gmail_integration
+from app.integrations.google.oauth import is_google_auth_failure
 from app.services.activity import log_activity
 from app.workers.celery_app import celery_app
 
@@ -20,6 +21,25 @@ def _automation_blocked(db) -> bool:
     if settings is None:
         return True
     return bool(settings.automation_paused or settings.emergency_stop)
+
+
+def _skip_google_auth(db, *, action: str, exc: Exception) -> dict:
+    """Soft-skip when Google refresh token is expired/revoked (avoid red GHA runs)."""
+    user = get_default_user(db)
+    if user is not None:
+        log_activity(
+            db,
+            user_id=user.id,
+            category="security",
+            action=action,
+            message=(
+                "Google OAuth token expired or revoked — reconnect Google on the Login page "
+                f"to resume automation. ({exc})"
+            ),
+            status="failure",
+            details={"reason": "google_token_revoked"},
+        )
+    return {"skipped": True, "reason": "google_token_revoked", "detail": str(exc)}
 
 
 @celery_app.task(name="app.workers.tasks.sheets_sync_task")
@@ -38,6 +58,9 @@ def daily_outreach_task() -> dict:
             return {"skipped": True, "reason": "automation_paused_or_stopped"}
         return run_daily_outreach(db, discover=True)
     except Exception as exc:
+        if is_google_auth_failure(exc):
+            logger.warning("daily_outreach_task skipped: Google auth failure: %s", exc)
+            return _skip_google_auth(db, action="google_token_refresh_failed", exc=exc)
         logger.exception("daily_outreach_task failed")
         return {"error": str(exc)}
     finally:
@@ -56,6 +79,9 @@ def hourly_outreach_send_task() -> dict:
         # No rediscovery — just attempt sends for drafts already approved.
         return run_daily_outreach(db, discover=False, force_auto_send=True)
     except Exception as exc:
+        if is_google_auth_failure(exc):
+            logger.warning("hourly_outreach_send_task skipped: Google auth failure: %s", exc)
+            return _skip_google_auth(db, action="google_token_refresh_failed", exc=exc)
         logger.exception("hourly_outreach_send_task failed")
         return {"error": str(exc)}
     finally:
@@ -82,6 +108,9 @@ def gmail_reconcile_task() -> dict:
         )
         return {"count": len(messages)}
     except Exception as exc:
+        if is_google_auth_failure(exc):
+            logger.warning("gmail_reconcile_task skipped: Google auth failure: %s", exc)
+            return _skip_google_auth(db, action="gmail_reconcile_auth_failed", exc=exc)
         logger.exception("gmail_reconcile_task failed")
         return {"error": str(exc)}
     finally:
