@@ -97,10 +97,17 @@ def gmail_reconcile_task() -> dict:
         user = get_default_user(db)
         if user is None:
             return {"skipped": True, "reason": "no_user"}
-        messages = gmail_integration.list_recent_messages(db, user.id, max_results=25)
+        user_id = user.id
+        messages = gmail_integration.list_recent_messages(db, user_id, max_results=25)
+        # Fresh session — Neon often closes the idle connection during Gmail I/O.
+        try:
+            db.close()
+        except Exception:
+            pass
+        db = SessionLocal()
         log_activity(
             db,
-            user_id=user.id,
+            user_id=user_id,
             category="email",
             action="gmail_reconcile",
             message=f"Reconciled {len(messages)} inbox messages",
@@ -114,4 +121,7 @@ def gmail_reconcile_task() -> dict:
         logger.exception("gmail_reconcile_task failed")
         return {"error": str(exc)}
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception:
+            pass
